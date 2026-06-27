@@ -26,8 +26,17 @@ const ja: Dict = {
 	error_invalid_input: "入力が不正です",
 	error_rate_limited: "アクセスが集中しています",
 	error_upstream: "上流 API でエラーが発生しました",
+	error_station_not_found: "該当する駅が見つかりません",
+	error_place_not_found: "該当する地点が見つかりません",
 	attribution_label: "データ提供",
 	loading: "読み込み中",
+	search_places_summary: "{{count}} 件の候補が見つかりました",
+	search_places_empty: "候補が見つかりませんでした",
+	station_summary: "{{name}}（{{routeCount}} 路線・{{platformCount}} ホーム）",
+	departures_summary: "{{name}} の今後 {{count}} 本の発車",
+	departures_empty: "{{name}} に発車情報がありません",
+	plan_summary: "{{count}} 件の経路。最速は {{route}} で {{minutes}} 分",
+	plan_summary_no_route: "経路が見つかりませんでした",
 };
 
 const en: Dict = {
@@ -39,8 +48,18 @@ const en: Dict = {
 	error_invalid_input: "Invalid input",
 	error_rate_limited: "Rate limited",
 	error_upstream: "Upstream API error",
+	error_station_not_found: "Station not found",
+	error_place_not_found: "Place not found",
 	attribution_label: "Data provided by",
 	loading: "Loading",
+	search_places_summary: "{{count}} places found",
+	search_places_empty: "No matching places",
+	station_summary:
+		"{{name}} ({{routeCount}} routes, {{platformCount}} platforms)",
+	departures_summary: "{{count}} upcoming departures at {{name}}",
+	departures_empty: "No departures available at {{name}}",
+	plan_summary: "{{count}} routes found, fastest {{minutes}} min via {{route}}",
+	plan_summary_no_route: "No route found",
 };
 
 const dictionaries: Record<Lang, Dict> = { ja, en };
