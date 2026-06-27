@@ -29,6 +29,13 @@ import {
 	validatePlanJourney,
 } from "./tools/plan-journey.js";
 import {
+	createPlanMultiJourneyTool,
+	PLAN_MULTI_JOURNEY_DESCRIPTION,
+	PLAN_MULTI_JOURNEY_INPUT_SCHEMA,
+	PLAN_MULTI_JOURNEY_NAME,
+	validatePlanMultiJourney,
+} from "./tools/plan-multi-journey.js";
+import {
 	createSearchPlacesTool,
 	SEARCH_PLACES_DESCRIPTION,
 	SEARCH_PLACES_INPUT_SCHEMA,
@@ -77,6 +84,11 @@ const TOOL_DEFS = [
 		description: PLAN_JOURNEY_DESCRIPTION,
 		inputSchema: PLAN_JOURNEY_INPUT_SCHEMA,
 	},
+	{
+		name: PLAN_MULTI_JOURNEY_NAME,
+		description: PLAN_MULTI_JOURNEY_DESCRIPTION,
+		inputSchema: PLAN_MULTI_JOURNEY_INPUT_SCHEMA,
+	},
 ] as const;
 
 export function createMcpServer(env: Env, host: string = ""): McpServer {
@@ -100,6 +112,7 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 		[STATION_DETAIL_NAME]: createStationDetailTool(client),
 		[STATION_DEPARTURES_NAME]: createStationDeparturesTool(client),
 		[PLAN_JOURNEY_NAME]: createPlanJourneyTool(client),
+		[PLAN_MULTI_JOURNEY_NAME]: createPlanMultiJourneyTool(client),
 	} as const;
 
 	const validators: Record<string, (raw: unknown) => { lang?: "ja" | "en" }> = {
@@ -107,6 +120,7 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 		[STATION_DETAIL_NAME]: validateStationDetail,
 		[STATION_DEPARTURES_NAME]: validateStationDepartures,
 		[PLAN_JOURNEY_NAME]: validatePlanJourney,
+		[PLAN_MULTI_JOURNEY_NAME]: validatePlanMultiJourney,
 	};
 
 	// Low-level handler registration so we can advertise plain JSON Schemas

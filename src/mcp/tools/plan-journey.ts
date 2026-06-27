@@ -120,17 +120,18 @@ export const PLAN_JOURNEY_INPUT_SCHEMA: JsonSchema = {
 				enum: [
 					"rail",
 					"bus",
-					"walk",
 					"ferry",
+					"air",
 					"tram",
 					"subway",
+					"cable",
 					"funicular",
+					"monorail",
 					"trolleybus",
-					"airplane",
 				],
 			},
 			description:
-				'Modes to exclude from the plan. e.g. `["rail","bus"]` forces a walking-only route on the requested segment. Mutually exclusive with `allowModes`.',
+				'Transit modes to exclude from the plan (pre-scan filter). `walk` is not a transit mode and is not accepted here. To force walking-only on short legs, set `avoidModes` to every relevant transit mode (e.g. `["rail","bus","ferry","subway","tram","monorail"]`); the planner falls back to walking when nothing else fits. Mutually exclusive with `allowModes`.',
 		},
 		allowModes: {
 			type: "array",
@@ -139,17 +140,18 @@ export const PLAN_JOURNEY_INPUT_SCHEMA: JsonSchema = {
 				enum: [
 					"rail",
 					"bus",
-					"walk",
 					"ferry",
+					"air",
 					"tram",
 					"subway",
+					"cable",
 					"funicular",
+					"monorail",
 					"trolleybus",
-					"airplane",
 				],
 			},
 			description:
-				"Restrict the plan to only these modes. Mutually exclusive with `avoidModes`.",
+				"Restrict the plan to only these transit modes (pre-scan filter). `walk` is not a transit mode and is implicitly available as a connector. Mutually exclusive with `avoidModes`.",
 		},
 		avoidWalk: {
 			type: "boolean",
@@ -197,13 +199,14 @@ const MODE_TO_API: Record<
 const MODE_ENUM = new Set([
 	"rail",
 	"bus",
-	"walk",
 	"ferry",
+	"air",
 	"tram",
 	"subway",
+	"cable",
 	"funicular",
+	"monorail",
 	"trolleybus",
-	"airplane",
 ]);
 
 function pickStrings(value: unknown): string[] | undefined {

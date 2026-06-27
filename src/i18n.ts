@@ -37,6 +37,8 @@ const ja: Dict = {
 	departures_empty: "{{name}} に発車情報がありません",
 	plan_summary: "{{count}} 件の経路。最速は {{route}} で {{minutes}} 分",
 	plan_summary_no_route: "経路が見つかりませんでした",
+	multi_plan_summary:
+		"{{count}} 区間の連結経路：合計 {{minutes}} 分・乗換 {{transfers}} 回",
 };
 
 const en: Dict = {
@@ -60,6 +62,8 @@ const en: Dict = {
 	departures_empty: "No departures available at {{name}}",
 	plan_summary: "{{count}} routes found, fastest {{minutes}} min via {{route}}",
 	plan_summary_no_route: "No route found",
+	multi_plan_summary:
+		"{{count}}-leg combined journey: {{minutes}} min total, {{transfers}} transfers",
 };
 
 const dictionaries: Record<Lang, Dict> = { ja, en };
