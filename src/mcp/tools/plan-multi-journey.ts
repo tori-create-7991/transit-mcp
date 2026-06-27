@@ -261,7 +261,13 @@ export const createPlanMultiJourneyTool: ToolFactory<PlanMultiJourneyArgs> =
 		}
 
 		const innerHandler = createPlanJourneyTool(client);
-		const perLegOptions: PlanOption[] = [];
+		const legGroups: Array<{
+			index: number;
+			from: string;
+			to: string;
+			note?: string;
+			options: PlanOption[];
+		}> = [];
 		const perLegSummaries: string[] = [];
 
 		for (let i = 0; i < args.legs.length; i++) {
@@ -292,9 +298,31 @@ export const createPlanMultiJourneyTool: ToolFactory<PlanMultiJourneyArgs> =
 					`${t("error_not_found", lang)} (leg ${i + 1})`,
 				);
 			}
-			perLegOptions.push(options[0]!);
+			// Cap to top 4 options per leg to keep the iframe payload bounded
+			// (4 legs × 4 options × ~3KB map ≈ 48KB, still well inside KV).
+			const trimmed = options.slice(0, 4);
+			const group: {
+				index: number;
+				from: string;
+				to: string;
+				note?: string;
+				options: PlanOption[];
+			} = {
+				index: i,
+				from: leg.from,
+				to: leg.to,
+				options: trimmed,
+			};
+			if (leg.note) group.note = leg.note;
+			legGroups.push(group);
 			if (sc?.summary) perLegSummaries.push(sc.summary);
 		}
+
+		// Default selection: the planner's top option per leg.
+		const defaultIndices = legGroups.map(() => 0);
+		const perLegOptions: PlanOption[] = legGroups.map(
+			(g, i) => g.options[defaultIndices[i] ?? 0]!,
+		);
 
 		const totalDurationSec = perLegOptions.reduce(
 			(acc, o) => acc + o.durationSec,
@@ -334,9 +362,19 @@ export const createPlanMultiJourneyTool: ToolFactory<PlanMultiJourneyArgs> =
 		let resourceUri = "";
 		if (ctx) {
 			try {
+				// Iframe receives the full leg groups so the UI can render a
+				// per-leg picker and re-compute the combined view client-side
+				// when the user swaps options. `defaultIndices` and the initial
+				// combined option are kept so a static viewer (no JS) still
+				// shows something meaningful.
 				resourceUri = await buildUiResourceUri(
 					ctx.host,
-					{ summary, options: [combined] },
+					{
+						summary,
+						options: [combined],
+						legGroups,
+						defaultIndices,
+					},
 					lang,
 					ctx.env,
 				);
@@ -350,6 +388,8 @@ export const createPlanMultiJourneyTool: ToolFactory<PlanMultiJourneyArgs> =
 			structuredContent: {
 				summary,
 				options: [combined],
+				legGroups,
+				defaultIndices,
 				perLegSummaries,
 				_meta: { ui: { resourceUri } },
 			},

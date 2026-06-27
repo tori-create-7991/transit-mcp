@@ -150,6 +150,120 @@ body,
   gap: 6px;
 }
 
+.route-card__toggle {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid #d0d0d6;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #0a6cff;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.route-card__toggle:hover {
+  background: #eef4ff;
+}
+
+.route-card__leg-headsign {
+  color: #666;
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.route-card__leg-walk {
+  color: #666;
+}
+
+.route-card__leg-color {
+  margin-top: 4px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.route-card__detail {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: #666;
+}
+
+.route-card__detail dt {
+  font-weight: 600;
+  color: #555;
+}
+
+.route-card__detail dd {
+  margin: 2px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.app__routes--multi {
+  padding-top: 56px;
+}
+
+.leg-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px;
+  background: #f0f3fa;
+  border-radius: 10px;
+}
+
+.leg-picker__row-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.leg-picker__row-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.leg-picker__row-note {
+  font-size: 11px;
+  color: #666;
+}
+
+.leg-picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.leg-picker__chip {
+  background: #fff;
+  border: 1px solid #d0d0d6;
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  color: #333;
+  transition:
+    border-color 0.12s,
+    background-color 0.12s,
+    color 0.12s;
+}
+
+.leg-picker__chip:hover {
+  border-color: #0a6cff;
+}
+
+.leg-picker__chip--active {
+  background: #0a6cff;
+  border-color: #0a6cff;
+  color: #fff;
+}
+
 .route-card__leg {
   border-left: 3px solid #0a6cff;
   padding: 4px 8px;

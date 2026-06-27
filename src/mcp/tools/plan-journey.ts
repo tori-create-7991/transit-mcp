@@ -51,6 +51,10 @@ export type PlanLeg = {
 	departSec: number;
 	arriveSec: number;
 	platform?: string;
+	/** Hex color advertised by the feed for this route, when available. */
+	color?: string;
+	/** Headsign / 方向, when the transit feed provides it. */
+	headsign?: string;
 };
 
 export type PlanMapPoint = {
@@ -372,6 +376,12 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 					};
 					if (leg.from.platformCode !== undefined) {
 						out.platform = leg.from.platformCode;
+					}
+					if (typeof leg.color === "string" && leg.color.length > 0) {
+						out.color = leg.color;
+					}
+					if (typeof leg.headsign === "string" && leg.headsign.length > 0) {
+						out.headsign = leg.headsign;
 					}
 					return out;
 				}

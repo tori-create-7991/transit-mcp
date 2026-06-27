@@ -17,8 +17,17 @@ export type Dict = {
 	"route.transfers_count": string;
 	"route.fare_yen": string;
 	"route.no_fare": string;
+	"route.show_detail": string;
+	"route.hide_detail": string;
+	"route.leg_count": string;
 	"leg.platform": string;
 	"leg.walk": string;
+	"leg.headsign": string;
+	"leg.duration_min": string;
+	"leg.walk_meters": string;
+	"multi.leg_label": string;
+	"multi.pick_option": string;
+	"multi.total": string;
 	"lang.toggle.ja": string;
 	"lang.toggle.en": string;
 	"attribution.data": string;
@@ -40,8 +49,17 @@ export const ja: Dict = {
 	"route.transfers_count": "{count}回",
 	"route.fare_yen": "{yen}円",
 	"route.no_fare": "—",
+	"route.show_detail": "詳細を表示",
+	"route.hide_detail": "閉じる",
+	"route.leg_count": "{count} 区間",
 	"leg.platform": "ホーム",
 	"leg.walk": "徒歩",
+	"leg.headsign": "{name} 行",
+	"leg.duration_min": "{minutes} 分",
+	"leg.walk_meters": "約 {meters} m",
+	"multi.leg_label": "区間 {n}: {from} → {to}",
+	"multi.pick_option": "ルートを選択",
+	"multi.total": "合計",
 	"lang.toggle.ja": "日本語",
 	"lang.toggle.en": "English",
 	"attribution.data": "データ",

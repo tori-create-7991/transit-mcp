@@ -1,13 +1,42 @@
 /**
- * Renders a single itinerary: duration / transfers / fare header and
- * an ordered list of legs.
+ * Renders a single itinerary: duration / transfers / fare header, an
+ * ordered list of legs, and an expandable detail panel showing per-leg
+ * times, line colors (when the feed advertises one), platforms, and
+ * estimated walk distance.
+ *
+ * The card is clickable to "select" it (used by both single- and multi-
+ * leg picker views); the detail-toggle button is wired separately so a
+ * click on the toggle does not bubble to select.
  */
 
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import type { Dict } from "../i18n/ja.js";
-import type { PlanOptionUi } from "../types.js";
+import type { PlanLegUi, PlanOptionUi } from "../types.js";
 
 type T = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+
+const WALK_SPEED_M_PER_MIN = 80;
+
+function formatSecs(secs: number): string {
+	const h = Math.floor(secs / 3600) % 24;
+	const m = Math.floor(secs / 60) % 60;
+	return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function legMinutes(leg: PlanLegUi): number {
+	return Math.max(1, Math.round((leg.arriveSec - leg.departSec) / 60));
+}
+
+function legWalkMeters(leg: PlanLegUi): number {
+	return (
+		Math.round((leg.arriveSec - leg.departSec) / 60) * WALK_SPEED_M_PER_MIN
+	);
+}
+
+function lineColor(leg: PlanLegUi): string | undefined {
+	if (!leg.color) return undefined;
+	return leg.color.startsWith("#") ? leg.color : `#${leg.color}`;
+}
 
 export function RouteCard(props: {
 	option: PlanOptionUi;
@@ -15,8 +44,10 @@ export function RouteCard(props: {
 	t: T;
 	active?: boolean;
 	onSelect?: () => void;
+	defaultExpanded?: boolean;
 }): ReactElement {
-	const { option, rank, t, active, onSelect } = props;
+	const { option, rank, t, active, onSelect, defaultExpanded } = props;
+	const [expanded, setExpanded] = useState(defaultExpanded ?? false);
 	const minutes = Math.round(option.durationSec / 60);
 	return (
 		<article
@@ -53,41 +84,80 @@ export function RouteCard(props: {
 						</dd>
 					</div>
 				</dl>
+				<button
+					type="button"
+					className="route-card__toggle"
+					aria-expanded={expanded}
+					onClick={(e) => {
+						e.stopPropagation();
+						setExpanded((v) => !v);
+					}}
+				>
+					{expanded ? t("route.hide_detail") : t("route.show_detail")}
+				</button>
 			</header>
 			<ol className="route-card__legs">
-				{option.legs.map((leg, idx) => (
-					<li
-						className="route-card__leg"
-						data-mode={leg.mode}
-						// biome-ignore lint/suspicious/noArrayIndexKey: leg list is fully derived
-						key={idx}
-					>
-						<div className="route-card__leg-line">
-							{leg.mode === "walk" ? t("leg.walk") : (leg.line ?? leg.mode)}
-						</div>
-						<div className="route-card__leg-od">
-							<span>{leg.fromName}</span>
-							<span aria-hidden="true">→</span>
-							<span>{leg.toName}</span>
-						</div>
-						<div className="route-card__leg-time">
-							{formatSecs(leg.departSec)} → {formatSecs(leg.arriveSec)}
-							{leg.platform !== undefined ? (
-								<span className="route-card__leg-platform">
-									{" "}
-									· {t("leg.platform")} {leg.platform}
-								</span>
+				{option.legs.map((leg, idx) => {
+					const color = lineColor(leg);
+					return (
+						<li
+							className="route-card__leg"
+							data-mode={leg.mode}
+							style={color ? { borderLeftColor: color } : undefined}
+							// biome-ignore lint/suspicious/noArrayIndexKey: leg list is fully derived
+							key={idx}
+						>
+							<div className="route-card__leg-line">
+								{leg.mode === "walk" ? t("leg.walk") : (leg.line ?? leg.mode)}
+								{leg.headsign ? (
+									<span className="route-card__leg-headsign">
+										{" "}
+										· {t("leg.headsign", { name: leg.headsign })}
+									</span>
+								) : null}
+							</div>
+							<div className="route-card__leg-od">
+								<span>{leg.fromName}</span>
+								<span aria-hidden="true">→</span>
+								<span>{leg.toName}</span>
+							</div>
+							<div className="route-card__leg-time">
+								{formatSecs(leg.departSec)} → {formatSecs(leg.arriveSec)} ·{" "}
+								{t("leg.duration_min", { minutes: legMinutes(leg) })}
+								{leg.platform !== undefined ? (
+									<span className="route-card__leg-platform">
+										{" "}
+										· {t("leg.platform")} {leg.platform}
+									</span>
+								) : null}
+								{leg.mode === "walk" ? (
+									<span className="route-card__leg-walk">
+										{" "}
+										· {t("leg.walk_meters", { meters: legWalkMeters(leg) })}
+									</span>
+								) : null}
+							</div>
+							{expanded && color ? (
+								<div
+									className="route-card__leg-color"
+									style={{ background: color }}
+								/>
 							) : null}
-						</div>
-					</li>
-				))}
+						</li>
+					);
+				})}
 			</ol>
+			{expanded ? (
+				<dl className="route-card__detail">
+					<div>
+						<dt>{t("route.leg_count", { count: option.legs.length })}</dt>
+						<dd>
+							{formatSecs(option.legs[0]?.departSec ?? 0)} →{" "}
+							{formatSecs(option.legs[option.legs.length - 1]?.arriveSec ?? 0)}
+						</dd>
+					</div>
+				</dl>
+			) : null}
 		</article>
 	);
-}
-
-function formatSecs(secs: number): string {
-	const h = Math.floor(secs / 3600) % 24;
-	const m = Math.floor(secs / 60) % 60;
-	return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }

@@ -14,6 +14,8 @@ export type PlanLegUi = {
 	departSec: number;
 	arriveSec: number;
 	platform?: string;
+	color?: string;
+	headsign?: string;
 };
 
 export type PlanMapPoint = {
@@ -50,9 +52,21 @@ export type PlanOptionUi = {
 	map?: PlanMapData;
 };
 
+export type PlanLegGroupUi = {
+	index: number;
+	from: string;
+	to: string;
+	note?: string;
+	options: PlanOptionUi[];
+};
+
 export type PlanData = {
 	summary: string;
 	options: PlanOptionUi[];
+	/** Present when the payload is a multi-leg plan (one entry per leg). */
+	legGroups?: PlanLegGroupUi[];
+	/** Default selected option index per leg group. */
+	defaultIndices?: number[];
 };
 
 export type AttributionData = {
