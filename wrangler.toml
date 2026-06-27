@@ -14,3 +14,7 @@ DEFAULT_LANG = "ja"
 [[kv_namespaces]]
 binding = "UI_CACHE"
 id = "39b40d82ce464c879534ec2c13b1d589"
+
+[[routes]]
+pattern = "transit-mcp.tori-dev.com"
+custom_domain = true

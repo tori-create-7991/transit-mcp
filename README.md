@@ -27,7 +27,7 @@ other three return JSON only.
 ## Quick start (clients)
 
 The server speaks the **Streamable HTTP** MCP transport. Once deployed it is
-reachable at `https://transit-mcp.<your-cf-account>.workers.dev/mcp`.
+reachable at `https://transit-mcp.tori-dev.com/mcp`.
 
 ### Claude Desktop
 
@@ -44,7 +44,7 @@ Add a `transit-mcp` entry under `mcpServers`:
   "mcpServers": {
     "transit-mcp": {
       "type": "http",
-      "url": "https://transit-mcp.<your-cf-account>.workers.dev/mcp"
+      "url": "https://transit-mcp.tori-dev.com/mcp"
     }
   }
 }
@@ -67,7 +67,7 @@ The MCP Apps SDK in ChatGPT discovers servers by URL exactly like Claude
 Desktop:
 
 1. Open ChatGPT settings → **Apps & Connectors** → **Add MCP Server**.
-2. Enter the server URL: `https://transit-mcp.<your-cf-account>.workers.dev/mcp`.
+2. Enter the server URL: `https://transit-mcp.tori-dev.com/mcp`.
 3. Choose transport: **Streamable HTTP**.
 4. Approve the four tools when prompted.
 
