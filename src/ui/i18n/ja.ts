@@ -23,6 +23,9 @@ export type Dict = {
 	"lang.toggle.en": string;
 	"attribution.data": string;
 	"attribution.map": string;
+	"attribution.providers_count": string;
+	"attribution.show": string;
+	"attribution.hide": string;
 	"error.no_data": string;
 };
 
@@ -43,5 +46,8 @@ export const ja: Dict = {
 	"lang.toggle.en": "English",
 	"attribution.data": "データ",
 	"attribution.map": "地図",
+	"attribution.providers_count": "{count} 事業者",
+	"attribution.show": "詳細を表示",
+	"attribution.hide": "閉じる",
 	"error.no_data": "表示できるデータがありません",
 };

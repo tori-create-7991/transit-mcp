@@ -21,5 +21,8 @@ export const en: Dict = {
 	"lang.toggle.en": "English",
 	"attribution.data": "Data",
 	"attribution.map": "Map",
+	"attribution.providers_count": "{count} providers",
+	"attribution.show": "Show details",
+	"attribution.hide": "Hide",
 	"error.no_data": "No data to display",
 };

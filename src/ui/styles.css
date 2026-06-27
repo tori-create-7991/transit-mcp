@@ -165,21 +165,48 @@ body,
   grid-area: attr;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   padding: 6px 12px;
   font-size: 10px;
   color: #555;
   background: #fafafa;
   border-top: 1px solid #e2e2e6;
+  max-height: 30vh;
+  overflow-y: auto;
 }
 
 .attribution__row {
   display: flex;
   gap: 6px;
+  align-items: center;
 }
 
 .attribution__label {
   font-weight: 600;
+}
+
+.attribution__toggle {
+  background: transparent;
+  border: 1px solid #d0d0d6;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: #0a6cff;
+  cursor: pointer;
+}
+
+.attribution__toggle:hover {
+  background: #eef4ff;
+}
+
+.attribution__details {
+  font-size: 10px;
+  color: #666;
+  line-height: 1.5;
+  word-break: break-word;
+  padding: 4px 0;
+  border-top: 1px dashed #d8d8de;
+  border-bottom: 1px dashed #d8d8de;
 }
 
 .empty-state {
