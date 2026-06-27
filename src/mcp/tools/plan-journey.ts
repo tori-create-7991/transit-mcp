@@ -33,9 +33,13 @@ import {
 export type PlanJourneyArgs = {
 	from: string;
 	to: string;
+	via?: string[];
 	when?: string;
 	mode?: "depart" | "arrive" | "first" | "last";
 	maxTransfers?: number;
+	avoidModes?: string[];
+	allowModes?: string[];
+	avoidWalk?: boolean;
 	lang?: Lang;
 };
 
@@ -86,7 +90,7 @@ export type PlanOption = {
 export const PLAN_JOURNEY_NAME = "plan_journey";
 
 export const PLAN_JOURNEY_DESCRIPTION =
-	"Plan a journey on Japanese public transit between two places. Accepts free-text place names, feed-qualified station ids (`feedId:stopId`), or `geo:lat,lon` for both `from` and `to`. Returns ranked itineraries with duration, transfer count, fare, and per-leg details.";
+	'Plan a journey on Japanese public transit between two places. Accepts free-text place names, feed-qualified station ids (`feedId:stopId`), or `geo:lat,lon` for `from`, `to`, and each `via` waypoint. Returns ranked itineraries with duration, transfer count, fare, per-leg details, and map geometry (`option.map.segments[].polyline`). Use `via` to force the route through specific waypoints (max 3). For best `via` results pass an explicit `when` timestamp — the planner ignores via for some queries without one. Use `avoidModes` (e.g. `["rail","bus"]`) to force walking; for mixed-mode legs (rail → walk → rail), prefer making one call per leg.';
 
 export const PLAN_JOURNEY_INPUT_SCHEMA: JsonSchema = {
 	type: "object",
@@ -101,6 +105,55 @@ export const PLAN_JOURNEY_INPUT_SCHEMA: JsonSchema = {
 			type: "string",
 			minLength: 1,
 			description: "Destination: free text, `feedId:stopId`, or `geo:lat,lon`.",
+		},
+		via: {
+			type: "array",
+			items: { type: "string", minLength: 1 },
+			maxItems: 5,
+			description:
+				"Optional intermediate waypoints to pass through, in order. Each accepts the same formats as `from`/`to` (free text, `feedId:stopId`, `geo:lat,lon`). Up to 5 entries.",
+		},
+		avoidModes: {
+			type: "array",
+			items: {
+				type: "string",
+				enum: [
+					"rail",
+					"bus",
+					"walk",
+					"ferry",
+					"tram",
+					"subway",
+					"funicular",
+					"trolleybus",
+					"airplane",
+				],
+			},
+			description:
+				'Modes to exclude from the plan. e.g. `["rail","bus"]` forces a walking-only route on the requested segment. Mutually exclusive with `allowModes`.',
+		},
+		allowModes: {
+			type: "array",
+			items: {
+				type: "string",
+				enum: [
+					"rail",
+					"bus",
+					"walk",
+					"ferry",
+					"tram",
+					"subway",
+					"funicular",
+					"trolleybus",
+					"airplane",
+				],
+			},
+			description:
+				"Restrict the plan to only these modes. Mutually exclusive with `avoidModes`.",
+		},
+		avoidWalk: {
+			type: "boolean",
+			description: "Skip plans that require walking transfers.",
 		},
 		when: {
 			type: "string",
@@ -141,6 +194,34 @@ const MODE_TO_API: Record<
 	last: "last",
 };
 
+const MODE_ENUM = new Set([
+	"rail",
+	"bus",
+	"walk",
+	"ferry",
+	"tram",
+	"subway",
+	"funicular",
+	"trolleybus",
+	"airplane",
+]);
+
+function pickStrings(value: unknown): string[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const cleaned = value
+		.filter((v): v is string => typeof v === "string")
+		.map((v) => v.trim())
+		.filter((v) => v.length > 0);
+	return cleaned.length > 0 ? cleaned : undefined;
+}
+
+function pickModes(value: unknown): string[] | undefined {
+	const arr = pickStrings(value);
+	if (!arr) return undefined;
+	const filtered = arr.filter((m) => MODE_ENUM.has(m));
+	return filtered.length > 0 ? filtered : undefined;
+}
+
 export function validatePlanJourney(raw: unknown): PlanJourneyArgs {
 	const obj = (raw ?? {}) as Record<string, unknown>;
 	const out: PlanJourneyArgs = {
@@ -158,6 +239,13 @@ export function validatePlanJourney(raw: unknown): PlanJourneyArgs {
 		out.mode = obj.mode;
 	}
 	if (typeof obj.maxTransfers === "number") out.maxTransfers = obj.maxTransfers;
+	const via = pickStrings(obj.via);
+	if (via) out.via = via.slice(0, 5);
+	const avoid = pickModes(obj.avoidModes);
+	if (avoid) out.avoidModes = avoid;
+	const allow = pickModes(obj.allowModes);
+	if (allow) out.allowModes = allow;
+	if (typeof obj.avoidWalk === "boolean") out.avoidWalk = obj.avoidWalk;
 	return out;
 }
 
@@ -172,15 +260,43 @@ async function resolveEndpoint(
 	client: TransitClient,
 	value: string,
 	lang: Lang,
+	preferGeo: boolean,
 ): Promise<string> {
 	if (looksLikeEndpoint(value)) return value;
+	// `via` waypoints (preferGeo=true) must work across feeds. Feed-qualified
+	// ids like `scrape-jreast-yamanote:...Ueno` only resolve within their own
+	// feed, so locations/suggest's top hit often won't be reachable from `from`.
+	// Falling back to `geo:lat,lon` lets the planner pick the nearest station
+	// in the correct feed graph automatically.
+	if (preferGeo) {
+		const loc = await client.GET("/api/v1/locations/suggest", {
+			params: { query: { q: value, limit: 1 } },
+		});
+		const station = loc.data?.stations?.[0];
+		if (
+			station &&
+			typeof station.lat === "number" &&
+			typeof station.lon === "number"
+		) {
+			return `geo:${station.lat},${station.lon}`;
+		}
+	}
 	const { data, error, response } = await client.GET("/api/v1/places/suggest", {
-		params: { query: { q: value, limit: 1 } },
+		params: { query: { q: value, limit: 5 } },
 	});
 	if (error || !data) {
 		throw mapUpstreamError(response?.status, lang, "error_place_not_found");
 	}
-	const top = data.places?.[0];
+	const candidates = data.places ?? [];
+	if (preferGeo) {
+		const candidate = candidates.find(
+			(p) => typeof p.lat === "number" && typeof p.lon === "number",
+		);
+		if (candidate?.lat !== undefined && candidate.lon !== undefined) {
+			return `geo:${candidate.lat},${candidate.lon}`;
+		}
+	}
+	const top = candidates[0];
 	if (!top) {
 		throw mapUpstreamError(404, lang, "error_place_not_found");
 	}
@@ -193,9 +309,15 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 		const fromIn = assertString(args.from, "from", lang);
 		const toIn = assertString(args.to, "to", lang);
 
-		const [from, to] = await Promise.all([
-			resolveEndpoint(client, fromIn, lang),
-			resolveEndpoint(client, toIn, lang),
+		const viaIn = args.via ?? [];
+		// With via constraints, the planner needs from/to in geo form too —
+		// a landmark-style place id pins the start to OSM rather than rail
+		// network, so via routing through stations gets ignored.
+		const preferGeo = viaIn.length > 0;
+		const [from, to, ...vias] = await Promise.all([
+			resolveEndpoint(client, fromIn, lang, preferGeo),
+			resolveEndpoint(client, toIn, lang, preferGeo),
+			...viaIn.map((v) => resolveEndpoint(client, v, lang, true)),
 		]);
 
 		const { date, time } = isoToDateAndTime(args.when);
@@ -206,14 +328,24 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 			date?: string;
 			time?: string;
 			maxTransfers?: number;
+			via?: string[];
+			avoidModes?: string;
+			allowModes?: string;
+			avoidWalk?: "true" | "false";
 		};
 		const query: GuidanceQuery = { from, to };
-		if (args.mode) query.type = MODE_TO_API[args.mode];
+		// `via` is honored only for departure/arrival queries (per API spec).
+		// Default to "departure" so via routing actually takes effect.
+		query.type = MODE_TO_API[args.mode ?? "depart"];
 		if (date) query.date = date;
 		if (time) query.time = time;
 		if (typeof args.maxTransfers === "number") {
 			query.maxTransfers = clampInt(args.maxTransfers, 0, 10, 4);
 		}
+		if (vias.length > 0) query.via = vias;
+		if (args.avoidModes?.length) query.avoidModes = args.avoidModes.join(",");
+		if (args.allowModes?.length) query.allowModes = args.allowModes.join(",");
+		if (args.avoidWalk) query.avoidWalk = "true";
 
 		const { data, error, response } = await client.GET(
 			"/api/v1/guidance/plan",

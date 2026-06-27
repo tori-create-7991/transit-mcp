@@ -36,7 +36,10 @@ export function cachePolicy(path: string): CachePolicy {
 		return { maxAge: DAY, swr: DAY };
 	}
 	if (p.endsWith("/guidance/plan") || p.endsWith("/plan")) {
-		return { maxAge: MINUTE, swr: 5 * MINUTE };
+		// Don't cache journey planner responses: repeated `via=` array params
+		// don't survive cleanly through Cloudflare cache normalization, and
+		// time-sensitive `when` queries shouldn't share cache entries.
+		return NO_CACHE;
 	}
 	if (p.endsWith("/feeds") || p.endsWith("/operators")) {
 		return { maxAge: HOUR, swr: DAY };

@@ -43,16 +43,16 @@ describe("cachePolicy", () => {
 		expect(p.swr).toBe(86_400);
 	});
 
-	it("returns 60s TTL with 5min SWR for /plan", () => {
+	it("bypasses cache for /plan", () => {
 		const p = cachePolicy("/api/v1/plan");
-		expect(p.maxAge).toBe(60);
-		expect(p.swr).toBe(300);
+		expect(p.maxAge).toBe(0);
+		expect(p.swr).toBe(0);
 	});
 
-	it("returns 60s TTL with 5min SWR for /guidance/plan", () => {
+	it("bypasses cache for /guidance/plan", () => {
 		const p = cachePolicy("/api/v1/guidance/plan");
-		expect(p.maxAge).toBe(60);
-		expect(p.swr).toBe(300);
+		expect(p.maxAge).toBe(0);
+		expect(p.swr).toBe(0);
 	});
 
 	it("returns 1 hour TTL with 1 day SWR for /feeds", () => {
@@ -141,7 +141,9 @@ describe("cachedFetch", () => {
 	});
 
 	it("sets Cache-Control header with maxAge and SWR on cached put", async () => {
-		const url = "https://api.transit.ls8h.com/api/v1/plan";
+		// /places/suggest still has the standard 1d/1d cache policy (planner
+		// paths intentionally bypass cache now to avoid via= array drops).
+		const url = "https://api.transit.ls8h.com/api/v1/places/suggest?q=x";
 
 		await cachedFetch(url);
 
@@ -149,7 +151,7 @@ describe("cachedFetch", () => {
 		const putCall = cacheMock.put.mock.calls[0];
 		const storedResponse = putCall?.[1] as Response;
 		const cc = storedResponse.headers.get("cache-control");
-		expect(cc).toBe("public, max-age=60, stale-while-revalidate=300");
+		expect(cc).toBe("public, max-age=86400, stale-while-revalidate=86400");
 	});
 
 	it("does not cache and uses no-cache header for unmatched paths", async () => {
