@@ -26,7 +26,21 @@ export type ToolResult = {
 	_meta?: Record<string, unknown>;
 };
 
-export type ToolHandler<Args> = (args: Args, lang: Lang) => Promise<ToolResult>;
+/**
+ * Optional per-request context the MCP server threads through to handlers.
+ * Right now only `plan_journey` needs it (to build the iframe resourceUri
+ * with the live origin + KV binding); other tools ignore it.
+ */
+export type RequestContext = {
+	host: string;
+	env: import("../../env.js").Env;
+};
+
+export type ToolHandler<Args> = (
+	args: Args,
+	lang: Lang,
+	ctx?: RequestContext,
+) => Promise<ToolResult>;
 
 export type ToolFactory<Args> = (client: TransitClient) => ToolHandler<Args>;
 

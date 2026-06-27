@@ -1,5 +1,5 @@
 /**
- * `plan_journey` — Phase 3 skeleton (no UI).
+ * `plan_journey` — Phase 4 wired with iframe UI.
  *
  * Two-step flow:
  *  1. Resolve free-text `from` / `to` via `/api/v1/places/suggest` (top1).
@@ -8,19 +8,23 @@
  *  2. Call `/api/v1/guidance/plan` and flatten the ranked options into the
  *     schema documented in design.md §4.2.
  *
- * The `_meta.ui.resourceUri` slot is intentionally left as `""` — Phase 4
- * populates it once the iframe HTML resource exists.
+ * When a `RequestContext` (`host` + `env`) is provided by the MCP server,
+ * `_meta.ui.resourceUri` is populated via `buildUiResourceUri`. Tests can
+ * still call the handler with no context — the resourceUri stays `""` and
+ * the existing Phase 3 assertions hold.
  */
 
 import type { Lang } from "../../i18n.js";
 import { t } from "../../i18n.js";
 import type { TransitClient } from "../../transit/client.js";
+import { buildUiResourceUri } from "../resources/ui-resource.js";
 import {
 	assertString,
 	clampInt,
 	isoToDateAndTime,
 	type JsonSchema,
 	mapUpstreamError,
+	type RequestContext,
 	resolveLang,
 	type ToolFactory,
 	type ToolResult,
@@ -158,7 +162,7 @@ async function resolveEndpoint(
 
 export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 	(client) =>
-	async (args, lang): Promise<ToolResult> => {
+	async (args, lang, ctx?: RequestContext): Promise<ToolResult> => {
 		const fromIn = assertString(args.from, "from", lang);
 		const toIn = assertString(args.to, "to", lang);
 
@@ -243,12 +247,33 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 			});
 		}
 
+		let resourceUri = "";
+		if (ctx) {
+			try {
+				// Encode only the plan payload here. Attribution + map style
+				// URL are joined back in by the `/ui/plan` route from env at
+				// render time, so we don't bloat resourceUri or KV cache with
+				// data that is the same for every request.
+				resourceUri = await buildUiResourceUri(
+					ctx.host,
+					{ summary, options },
+					lang,
+					ctx.env,
+				);
+			} catch {
+				// Iframe is best-effort. If KV write fails, fall back to the
+				// text summary; the LLM still gets a useful answer per
+				// design.md §7 (degradation).
+				resourceUri = "";
+			}
+		}
+
 		return {
 			content: [{ type: "text", text: summary }],
 			structuredContent: {
 				summary,
 				options,
-				_meta: { ui: { resourceUri: "" } },
+				_meta: { ui: { resourceUri } },
 			},
 		};
 	};

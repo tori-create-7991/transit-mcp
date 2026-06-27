@@ -5,7 +5,7 @@
  * - GET  /health  → liveness probe
  * - ALL  /mcp     → MCP Streamable HTTP transport (POST for JSON-RPC, GET
  *                   for SSE streaming, DELETE for session termination)
- * - GET  /ui/plan → iframe UI for `plan_journey` (stub until Phase 4)
+ * - GET  /ui/plan → iframe UI for `plan_journey` (Phase 4)
  *
  * The MCP server is created per-request in stateless mode. Each request
  * spins up a fresh `WebStandardStreamableHTTPServerTransport`, connects
@@ -16,7 +16,10 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { Hono } from "hono";
 import type { Env } from "./env.js";
+import { renderUiHtml } from "./mcp/resources/ui-html.js";
 import { createMcpServer } from "./mcp/server.js";
+import { getAttributions } from "./transit/attribution.js";
+import type { PlanData } from "./ui/types.js";
 
 type HonoEnv = {
 	Bindings: Env;
@@ -29,7 +32,8 @@ app.get("/health", (c) => {
 });
 
 app.all("/mcp", async (c) => {
-	const server = createMcpServer(c.env);
+	const host = new URL(c.req.url).origin;
+	const server = createMcpServer(c.env, host);
 	// Stateless mode: omit `sessionIdGenerator` entirely (passing `undefined`
 	// is rejected by `exactOptionalPropertyTypes`).
 	const transport = new WebStandardStreamableHTTPServerTransport({
@@ -48,8 +52,57 @@ app.all("/mcp", async (c) => {
 	}
 });
 
-app.get("/ui/plan", (c) => {
-	return c.html("<h1>plan UI (TBD)</h1>");
+/**
+ * Decode the base64url-encoded plan payload from a `?d=` param.
+ * Returns null on any decode failure so the caller can 404 cleanly.
+ */
+function decodeInlinePayload(b64url: string): PlanData | null {
+	try {
+		const padded =
+			b64url.replace(/-/g, "+").replace(/_/g, "/") +
+			"=".repeat((4 - (b64url.length % 4)) % 4);
+		const binary = atob(padded);
+		const bytes = new Uint8Array(binary.length);
+		for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+		const json = new TextDecoder().decode(bytes);
+		return JSON.parse(json) as PlanData;
+	} catch {
+		return null;
+	}
+}
+
+app.get("/ui/plan", async (c) => {
+	const url = new URL(c.req.url);
+	const langParam = url.searchParams.get("lang");
+	const lang: "ja" | "en" =
+		langParam === "en" ? "en" : langParam === "ja" ? "ja" : c.env.DEFAULT_LANG;
+
+	let plan: PlanData | null = null;
+	const inline = url.searchParams.get("d");
+	const cacheKey = url.searchParams.get("k");
+	if (inline) {
+		plan = decodeInlinePayload(inline);
+	} else if (cacheKey) {
+		const stored = await c.env.UI_CACHE.get(cacheKey);
+		if (stored) {
+			try {
+				plan = JSON.parse(stored) as PlanData;
+			} catch {
+				plan = null;
+			}
+		}
+	}
+
+	if (!plan) {
+		return c.text("plan payload not found", 404);
+	}
+
+	const attribution = await getAttributions(c.env);
+	const html = renderUiHtml(plan, attribution, c.env.MAP_STYLE_URL, lang);
+	c.header("Content-Type", "text/html; charset=utf-8");
+	// Data is inlined in the URL / KV — safe to allow short edge cache.
+	c.header("Cache-Control", "public, max-age=3600");
+	return c.body(html);
 });
 
 export default app;

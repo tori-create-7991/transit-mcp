@@ -79,7 +79,7 @@ const TOOL_DEFS = [
 	},
 ] as const;
 
-export function createMcpServer(env: Env): McpServer {
+export function createMcpServer(env: Env, host: string = ""): McpServer {
 	const server = new McpServer(SERVER_INFO, {
 		capabilities: {
 			tools: {},
@@ -89,6 +89,11 @@ export function createMcpServer(env: Env): McpServer {
 
 	const defaultLang = resolveLang(env.DEFAULT_LANG, "ja");
 	const client = transitClient(env.TRANSIT_API_BASE);
+	// `host` is the origin (e.g. `https://transit-mcp.example.workers.dev`)
+	// used to build absolute `_meta.ui.resourceUri` URLs. When called
+	// outside of an HTTP context (tests, scripts) we leave it blank and the
+	// handler falls back to an empty resourceUri.
+	const ctx = host ? { host, env } : undefined;
 
 	const handlers = {
 		[SEARCH_PLACES_NAME]: createSearchPlacesTool(client),
@@ -126,7 +131,7 @@ export function createMcpServer(env: Env): McpServer {
 			}
 			const args = validator(rawArgs);
 			const lang = resolveLang(args.lang, defaultLang);
-			const result = await handler(args as never, lang);
+			const result = await handler(args as never, lang, ctx);
 			return {
 				content: result.content,
 				...(result.structuredContent
