@@ -1,9 +1,27 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": { "enabled": true },
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/.wrangler",
+      "!**/src/ui/dist",
+      "!**/src/mcp/resources/ui-html.generated.ts",
+      "!**/src/transit/types.d.ts",
+      "!**/pnpm-lock.yaml"
+    ]
+  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
-    "rules": { "recommended": true }
+    "rules": { "preset": "none" }
   },
-  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 }
+  "formatter": { "indentStyle": "tab", "indentWidth": 2, "lineWidth": 80 },
+  "overrides": [
+    {
+      "includes": ["**/*.json", "**/*.jsonc", "**/*.css"],
+      "formatter": { "indentStyle": "space", "indentWidth": 2 }
+    }
+  ]
 }

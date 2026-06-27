@@ -53,6 +53,54 @@ function buildCacheControl(policy: CachePolicy): string {
 }
 
 /**
+ * Treat status / fetch error as transient. Per design.md §11 we retry
+ * exactly once with a short backoff before surfacing the failure.
+ */
+function isTransientStatus(status: number): boolean {
+	return status >= 500 || status === 429;
+}
+
+const RETRY_BACKOFF_MS = 200;
+
+async function fetchWithRetry(request: Request): Promise<Response> {
+	let attempt = 0;
+	let lastError: unknown;
+	while (attempt < 2) {
+		try {
+			const res = await fetch(request);
+			if (attempt === 0 && isTransientStatus(res.status)) {
+				attempt += 1;
+				await sleep(RETRY_BACKOFF_MS);
+				continue;
+			}
+			return res;
+		} catch (err) {
+			lastError = err;
+			if (attempt === 0) {
+				attempt += 1;
+				await sleep(RETRY_BACKOFF_MS);
+				continue;
+			}
+			break;
+		}
+	}
+	// Both attempts errored at the network level. Surface a synthetic 503 so
+	// `openapi-fetch` reports `{ error, response: { status: 503 } }` and the
+	// tool layer can map it to a localized INTERNAL_ERROR per shared.ts.
+	if (lastError !== undefined) {
+		return new Response(JSON.stringify({ error: "network_error" }), {
+			status: 503,
+			headers: { "content-type": "application/json" },
+		});
+	}
+	return fetch(request);
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * Fetch wrapper that consults Cloudflare's `caches.default` for GET requests
  * matching a known cache policy. Suitable as the `fetch` option for
  * `openapi-fetch`.
@@ -75,7 +123,8 @@ export async function cachedFetch(
 				: input
 			: new Request(input, init);
 
-	// Cache API only stores GET responses.
+	// Cache API only stores GET responses. POST/PUT/etc. are never retried
+	// because they are not idempotent.
 	if (request.method !== "GET") {
 		return fetch(request);
 	}
@@ -84,17 +133,18 @@ export async function cachedFetch(
 	const policy = cachePolicy(url.pathname);
 
 	// Unmatched paths bypass the cache and do not set a Cache-Control header.
+	// They still benefit from the 1-shot retry for transient upstream failures.
 	if (policy.maxAge === 0) {
-		return fetch(request);
+		return fetchWithRetry(request);
 	}
 
 	// Cloudflare runtime only: `caches.default` exists on Workers. In Node
 	// tests this is supplied via `vi.stubGlobal`. If absent (e.g. running in a
-	// bare Node script), fall through to a plain fetch.
+	// bare Node script), fall through to a plain fetch (with retry).
 	const cache = (globalThis as { caches?: { default?: Cache } }).caches
 		?.default;
 	if (!cache) {
-		return fetch(request);
+		return fetchWithRetry(request);
 	}
 
 	const hit = await cache.match(request);
@@ -102,7 +152,7 @@ export async function cachedFetch(
 		return hit;
 	}
 
-	const response = await fetch(request);
+	const response = await fetchWithRetry(request);
 	if (!response.ok) {
 		return response;
 	}

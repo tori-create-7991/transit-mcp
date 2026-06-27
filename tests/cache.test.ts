@@ -163,7 +163,12 @@ describe("cachedFetch", () => {
 		expect(cacheMock.put).not.toHaveBeenCalled();
 	});
 
-	it("does not cache non-2xx responses", async () => {
+	it("does not cache non-2xx responses (5xx persists after 1 retry)", async () => {
+		// fetchWithRetry retries once on 5xx, so we mock both attempts as 500
+		// to verify the final non-2xx response is returned without caching.
+		fetchSpy.mockResolvedValueOnce(
+			new Response("server error", { status: 500 }),
+		);
 		fetchSpy.mockResolvedValueOnce(
 			new Response("server error", { status: 500 }),
 		);
@@ -172,6 +177,36 @@ describe("cachedFetch", () => {
 		const res = await cachedFetch(url);
 
 		expect(res.status).toBe(500);
+		expect(fetchSpy).toHaveBeenCalledTimes(2);
+		expect(cacheMock.put).not.toHaveBeenCalled();
+	});
+
+	it("retries 5xx exactly once and serves the recovered 200", async () => {
+		fetchSpy.mockResolvedValueOnce(new Response("transient", { status: 503 }));
+		fetchSpy.mockResolvedValueOnce(
+			new Response(JSON.stringify({ ok: true }), {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			}),
+		);
+		const url = "https://api.transit.ls8h.com/api/v1/feeds";
+
+		const res = await cachedFetch(url);
+
+		expect(res.status).toBe(200);
+		expect(fetchSpy).toHaveBeenCalledTimes(2);
+		// Recovered response is fresh, so it should be cached for future hits.
+		expect(cacheMock.put).toHaveBeenCalledOnce();
+	});
+
+	it("does not retry non-transient 4xx responses", async () => {
+		fetchSpy.mockResolvedValueOnce(new Response("bad input", { status: 400 }));
+		const url = "https://api.transit.ls8h.com/api/v1/places/suggest?q=x";
+
+		const res = await cachedFetch(url);
+
+		expect(res.status).toBe(400);
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		expect(cacheMock.put).not.toHaveBeenCalled();
 	});
 
