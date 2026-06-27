@@ -16,11 +16,14 @@ import {
 	CallToolRequestSchema,
 	type CallToolResult,
 	ErrorCode,
+	ListResourcesRequestSchema,
 	ListToolsRequestSchema,
 	McpError,
+	ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import type { Env } from "../env.js";
 import { transitClient } from "../transit/client.js";
+import { PLAN_HTML_BRIDGE } from "./resources/ui-html.generated.js";
 import {
 	createPlanJourneyTool,
 	PLAN_JOURNEY_DESCRIPTION,
@@ -63,6 +66,11 @@ const SERVER_INFO = {
 	version: "0.1.0",
 } as const;
 
+// MCP Apps SDK resource URI for the iframe widget. Registered via
+// resources/list + read so OpenAI Apps SDK (ChatGPT) can fetch the HTML
+// referenced from each plan tool's `_meta["openai/outputTemplate"]`.
+const UI_WIDGET_URI = "ui://widget/plan.html";
+
 const TOOL_DEFS = [
 	{
 		name: SEARCH_PLACES_NAME,
@@ -83,11 +91,19 @@ const TOOL_DEFS = [
 		name: PLAN_JOURNEY_NAME,
 		description: PLAN_JOURNEY_DESCRIPTION,
 		inputSchema: PLAN_JOURNEY_INPUT_SCHEMA,
+		_meta: {
+			"openai/outputTemplate": UI_WIDGET_URI,
+			ui: { resourceUri: UI_WIDGET_URI },
+		},
 	},
 	{
 		name: PLAN_MULTI_JOURNEY_NAME,
 		description: PLAN_MULTI_JOURNEY_DESCRIPTION,
 		inputSchema: PLAN_MULTI_JOURNEY_INPUT_SCHEMA,
+		_meta: {
+			"openai/outputTemplate": UI_WIDGET_URI,
+			ui: { resourceUri: UI_WIDGET_URI },
+		},
 	},
 ] as const;
 
@@ -127,11 +143,20 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 	// in tools/list (the high-level McpServer.tool() API requires Zod, which
 	// is only a peer dependency of the SDK and not in our runtime deps).
 	server.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-		tools: TOOL_DEFS.map((t) => ({
-			name: t.name,
-			description: t.description,
-			inputSchema: t.inputSchema,
-		})),
+		tools: TOOL_DEFS.map((t) => {
+			const def: {
+				name: string;
+				description: string;
+				inputSchema: unknown;
+				_meta?: Record<string, unknown>;
+			} = {
+				name: t.name,
+				description: t.description,
+				inputSchema: t.inputSchema,
+			};
+			if ("_meta" in t && t._meta) def._meta = t._meta;
+			return def;
+		}),
 	}));
 
 	server.server.setRequestHandler(
@@ -146,14 +171,65 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 			const args = validator(rawArgs);
 			const lang = resolveLang(args.lang, defaultLang);
 			const result = await handler(args as never, lang, ctx);
-			return {
+			const callResult: CallToolResult = {
 				content: result.content,
-				...(result.structuredContent
-					? { structuredContent: result.structuredContent }
-					: {}),
 			};
+			if (result.structuredContent) {
+				callResult.structuredContent = result.structuredContent;
+			}
+			// Mirror the tool descriptor's UI hint into the call result so
+			// ChatGPT's renderer knows which widget to mount for this output.
+			const def = TOOL_DEFS.find((t) => t.name === name);
+			if (def && "_meta" in def && def._meta) {
+				callResult._meta = def._meta;
+			}
+			return callResult;
 		},
 	);
+
+	// Resources: register the iframe widget. ChatGPT Apps SDK fetches this
+	// via the URI advertised in each tool's `_meta["openai/outputTemplate"]`;
+	// Claude can also discover and read it through standard MCP resources.
+	server.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+		resources: [
+			{
+				uri: UI_WIDGET_URI,
+				name: "Transit journey UI",
+				description:
+					"Interactive map + route cards for plan_journey / plan_multi_journey.",
+				mimeType: "text/html;profile=mcp-app",
+			},
+		],
+	}));
+
+	server.server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
+		if (req.params.uri !== UI_WIDGET_URI) {
+			throw new McpError(
+				ErrorCode.InvalidParams,
+				`Unknown resource: ${req.params.uri}`,
+			);
+		}
+		return {
+			contents: [
+				{
+					uri: UI_WIDGET_URI,
+					mimeType: "text/html;profile=mcp-app",
+					text: PLAN_HTML_BRIDGE,
+					_meta: {
+						ui: {
+							csp: {
+								connectDomains: [
+									"https://tiles.openfreemap.org",
+									"https://api.transit.ls8h.com",
+								],
+								imageDomains: ["https://tiles.openfreemap.org"],
+							},
+						},
+					},
+				},
+			],
+		};
+	});
 
 	return server;
 }

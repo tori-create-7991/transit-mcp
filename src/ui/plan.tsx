@@ -20,6 +20,7 @@ import { RouteCard } from "./components/RouteCard.js";
 import { detectLang, makeT, persistLang, type UiLang } from "./i18n/index.js";
 import type {
 	IframeBootstrap,
+	PlanData,
 	PlanLegUi,
 	PlanMapBounds,
 	PlanMapData,
@@ -240,16 +241,95 @@ function MultiLegApp(props: {
 	);
 }
 
+/**
+ * ChatGPT Apps SDK bridge. When the iframe is rendered inside ChatGPT,
+ * `window.openai` is exposed by the host:
+ *   - `openai.toolOutput` mirrors the calling tool's structuredContent
+ *   - `openai.toolInput` mirrors the calling tool's arguments
+ *   - `openai.theme` / `openai.locale` give host preferences
+ * Data can also arrive asynchronously, so we subscribe to the change
+ * event and re-render on update.
+ *
+ * For Claude Desktop and direct browser views (`?d=` URL fallback) the
+ * data lives in `window.__TRANSIT_DATA__` instead — kept here so a
+ * single bundled HTML serves all three hosts.
+ */
+type OpenAiBridge = {
+	toolOutput?: { structuredContent?: unknown } | unknown;
+	theme?: { mode?: "light" | "dark" };
+	locale?: string;
+	displayMode?: "inline" | "fullscreen";
+	addEventListener?: (
+		type: "openai:tool_output" | "openai:state_changed",
+		listener: () => void,
+	) => void;
+};
+
+declare global {
+	interface Window {
+		openai?: OpenAiBridge;
+	}
+}
+
+const DEFAULT_MAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
+
+function readBridgePlan(): PlanData | undefined {
+	const out = window.openai?.toolOutput as
+		| { structuredContent?: unknown }
+		| undefined;
+	const sc = (out?.structuredContent ?? out) as Partial<PlanData> | undefined;
+	if (!sc || typeof sc !== "object") return undefined;
+	if (!Array.isArray(sc.options) && !Array.isArray(sc.legGroups))
+		return undefined;
+	return sc as PlanData;
+}
+
+function bridgeBoot(
+	plan: PlanData,
+	locale: string | undefined,
+): IframeBootstrap {
+	const lang: "ja" | "en" = locale?.startsWith("ja") ? "ja" : "en";
+	return {
+		plan,
+		attribution: {
+			feeds: [],
+			operators: [],
+			mapAttribution:
+				'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://openfreemap.org">OpenFreeMap</a>',
+		},
+		mapStyleUrl: DEFAULT_MAP_STYLE,
+		lang,
+	};
+}
+
 function bootstrap(): void {
 	const container = document.getElementById("app");
 	if (!container) return;
-	const boot = window.__TRANSIT_DATA__;
-	if (!boot) {
-		container.textContent = "No data";
+
+	const root = createRoot(container);
+	const render = (boot: IframeBootstrap) => root.render(<App boot={boot} />);
+
+	const directBoot = window.__TRANSIT_DATA__;
+	if (directBoot) {
+		render(directBoot);
 		return;
 	}
-	const root = createRoot(container);
-	root.render(<App boot={boot} />);
+
+	const bridgePlan = readBridgePlan();
+	if (bridgePlan) {
+		render(bridgeBoot(bridgePlan, window.openai?.locale));
+	} else {
+		container.textContent = "Waiting for plan data…";
+	}
+
+	// ChatGPT may stream tool output after the iframe loads. Subscribe so
+	// we re-render whenever the bridge surfaces a new structuredContent.
+	const onUpdate = () => {
+		const next = readBridgePlan();
+		if (next) render(bridgeBoot(next, window.openai?.locale));
+	};
+	window.openai?.addEventListener?.("openai:tool_output", onUpdate);
+	window.openai?.addEventListener?.("openai:state_changed", onUpdate);
 }
 
 bootstrap();
