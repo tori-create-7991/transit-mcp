@@ -1,0 +1,17 @@
+name = "transit-mcp"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[vars]
+TRANSIT_API_BASE = "https://api.transit.ls8h.com"
+MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/positron"
+DEFAULT_LANG = "ja"
+
+[[kv_namespaces]]
+binding = "UI_CACHE"
+# TODO: set via 'wrangler kv namespace create UI_CACHE'
+id = "TODO_REPLACE_WITH_KV_NAMESPACE_ID"
