@@ -49,11 +49,38 @@ export type PlanLeg = {
 	platform?: string;
 };
 
+export type PlanMapPoint = {
+	id?: string;
+	name?: string;
+	lat: number;
+	lon: number;
+	role?: string;
+};
+
+export type PlanMapSegment = {
+	kind: string;
+	polyline: { lat: number; lon: number }[];
+};
+
+export type PlanMapBounds = {
+	minLat: number;
+	minLon: number;
+	maxLat: number;
+	maxLon: number;
+};
+
+export type PlanMapData = {
+	bounds?: PlanMapBounds;
+	points: PlanMapPoint[];
+	segments: PlanMapSegment[];
+};
+
 export type PlanOption = {
 	durationSec: number;
 	transfers: number;
 	fareYen?: number;
 	legs: PlanLeg[];
+	map?: PlanMapData;
 };
 
 export const PLAN_JOURNEY_NAME = "plan_journey";
@@ -227,6 +254,34 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 				legs,
 			};
 			if (j.fare?.ticket !== undefined) opt.fareYen = j.fare.ticket;
+			if (o.map) {
+				const points: PlanMapPoint[] = (o.map.points ?? [])
+					.filter((p) => typeof p.lat === "number" && typeof p.lon === "number")
+					.map((p) => {
+						const pt: PlanMapPoint = {
+							lat: p.lat as number,
+							lon: p.lon as number,
+						};
+						if (p.id) pt.id = p.id;
+						if (p.name) pt.name = p.name;
+						if (p.role) pt.role = p.role;
+						return pt;
+					});
+				const segments: PlanMapSegment[] = (o.map.segments ?? []).map((s) => ({
+					kind: s.kind,
+					polyline: (s.polyline ?? []).map((p) => ({ lat: p.lat, lon: p.lon })),
+				}));
+				opt.map = { points, segments };
+				const b = o.map.bounds;
+				if (b && typeof b.minLat === "number") {
+					opt.map.bounds = {
+						minLat: b.minLat,
+						minLon: b.minLon,
+						maxLat: b.maxLat,
+						maxLon: b.maxLon,
+					};
+				}
+			}
 			return opt;
 		});
 

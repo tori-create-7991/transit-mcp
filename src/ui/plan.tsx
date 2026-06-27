@@ -26,9 +26,6 @@ function App(props: { boot: IframeBootstrap }): ReactElement {
 	const { boot } = props;
 	const [lang, setLang] = useState<UiLang>(() => {
 		const detected = detectLang();
-		// Server-provided lang wins if we have not stored anything client-side
-		// (detectLang returns the default "ja" when navigator/localStorage are
-		// silent). Use the boot lang in that case to honor host headers.
 		if (typeof window !== "undefined") {
 			try {
 				const stored = window.localStorage?.getItem("transit_lang");
@@ -49,6 +46,10 @@ function App(props: { boot: IframeBootstrap }): ReactElement {
 	const options = boot.plan.options ?? [];
 	const hasData = options.length > 0;
 
+	const [selectedIdx, setSelectedIdx] = useState(0);
+	const safeIdx = Math.min(selectedIdx, Math.max(options.length - 1, 0));
+	const selectedMap = options[safeIdx]?.map;
+
 	return (
 		<div className="app">
 			<LangToggle lang={lang} onChange={onLang} t={t} />
@@ -61,6 +62,8 @@ function App(props: { boot: IframeBootstrap }): ReactElement {
 							option={opt}
 							rank={idx + 1}
 							t={t}
+							active={idx === safeIdx}
+							onSelect={() => setSelectedIdx(idx)}
 						/>
 					))
 				) : (
@@ -68,7 +71,11 @@ function App(props: { boot: IframeBootstrap }): ReactElement {
 				)}
 			</ol>
 			<div className="app__map">
-				<MapView mapStyleUrl={boot.mapStyleUrl} />
+				{selectedMap ? (
+					<MapView mapStyleUrl={boot.mapStyleUrl} map={selectedMap} />
+				) : (
+					<MapView mapStyleUrl={boot.mapStyleUrl} />
+				)}
 			</div>
 			<Attribution
 				feeds={boot.attribution.feeds}

@@ -16,11 +16,38 @@ export type PlanLegUi = {
 	platform?: string;
 };
 
+export type PlanMapPoint = {
+	id?: string;
+	name?: string;
+	lat: number;
+	lon: number;
+	role?: string;
+};
+
+export type PlanMapSegment = {
+	kind: string;
+	polyline: { lat: number; lon: number }[];
+};
+
+export type PlanMapBounds = {
+	minLat: number;
+	minLon: number;
+	maxLat: number;
+	maxLon: number;
+};
+
+export type PlanMapData = {
+	bounds?: PlanMapBounds;
+	points: PlanMapPoint[];
+	segments: PlanMapSegment[];
+};
+
 export type PlanOptionUi = {
 	durationSec: number;
 	transfers: number;
 	fareYen?: number;
 	legs: PlanLegUi[];
+	map?: PlanMapData;
 };
 
 export type PlanData = {

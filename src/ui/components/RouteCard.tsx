@@ -13,11 +13,26 @@ export function RouteCard(props: {
 	option: PlanOptionUi;
 	rank: number;
 	t: T;
+	active?: boolean;
+	onSelect?: () => void;
 }): ReactElement {
-	const { option, rank, t } = props;
+	const { option, rank, t, active, onSelect } = props;
 	const minutes = Math.round(option.durationSec / 60);
 	return (
-		<article className="route-card" data-rank={rank}>
+		<article
+			className={`route-card${active ? " route-card--active" : ""}`}
+			data-rank={rank}
+			onClick={onSelect}
+			onKeyDown={(e) => {
+				if (onSelect && (e.key === "Enter" || e.key === " ")) {
+					e.preventDefault();
+					onSelect();
+				}
+			}}
+			tabIndex={onSelect ? 0 : -1}
+			role={onSelect ? "button" : undefined}
+			aria-pressed={onSelect ? active : undefined}
+		>
 			<header className="route-card__header">
 				<span className="route-card__rank">#{rank}</span>
 				<dl className="route-card__metrics">

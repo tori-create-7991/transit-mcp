@@ -1,75 +1,136 @@
 /**
- * Mounts a MapLibre GL map. The map style URL is provided by the server
- * (Worker env `MAP_STYLE_URL`). Geometry lines, when present, are added
- * as a stable `route-geometry` source/layer so future updates can swap
- * features without re-creating the map.
+ * Mounts a MapLibre GL map with optional route geometry overlay.
  *
- * Geometry is optional — the planner currently does not return polylines,
- * so the map falls back to a centered Tokyo view.
+ * When `map` is provided, polylines (one per planner segment) are added
+ * as a GeoJSON source and the view is fit to the bounds. Transit
+ * segments get a solid blue line; walks render as a dashed gray line.
+ * Origin / destination / transfer points are placed as small markers.
  */
 
 import { type ReactElement, useEffect, useRef } from "react";
-
-type LineString = {
-	type: "LineString";
-	coordinates: [number, number][];
-};
+import type { PlanMapData } from "../types.js";
 
 export function MapView(props: {
 	mapStyleUrl: string;
-	geometry?: LineString[];
+	map?: PlanMapData;
 }): ReactElement {
-	const { mapStyleUrl, geometry } = props;
+	const { mapStyleUrl, map } = props;
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const mapRef = useRef<unknown>(null);
 
 	useEffect(() => {
 		if (!containerRef.current) return;
-		// Dynamic import keeps MapLibre out of any future SSR path and makes
-		// the dependency obvious in the bundle graph.
 		let cancelled = false;
 		void import("maplibre-gl").then((mlib) => {
 			if (cancelled || !containerRef.current) return;
 			const Map = mlib.Map;
-			const map = new Map({
+			const m = new Map({
 				container: containerRef.current,
 				style: mapStyleUrl,
 				center: [139.7671, 35.6812],
 				zoom: 10,
 				attributionControl: false,
 			});
-			mapRef.current = map;
-			map.on("load", () => {
-				if (!geometry || geometry.length === 0) return;
-				map.addSource("route-geometry", {
-					type: "geojson",
-					data: {
-						type: "FeatureCollection",
-						features: geometry.map((g) => ({
-							type: "Feature",
-							geometry: g,
-							properties: {},
-						})),
-					},
-				});
-				map.addLayer({
-					id: "route-geometry-line",
-					type: "line",
-					source: "route-geometry",
-					paint: {
-						"line-color": "#0a6cff",
-						"line-width": 4,
-					},
-				});
+			mapRef.current = m;
+			m.on("load", () => {
+				if (!map) return;
+
+				const transitFeatures = map.segments
+					.filter((s) => s.kind !== "walk" && s.polyline.length >= 2)
+					.map((s) => ({
+						type: "Feature" as const,
+						geometry: {
+							type: "LineString" as const,
+							coordinates: s.polyline.map(
+								(p) => [p.lon, p.lat] as [number, number],
+							),
+						},
+						properties: { kind: s.kind },
+					}));
+				const walkFeatures = map.segments
+					.filter((s) => s.kind === "walk" && s.polyline.length >= 2)
+					.map((s) => ({
+						type: "Feature" as const,
+						geometry: {
+							type: "LineString" as const,
+							coordinates: s.polyline.map(
+								(p) => [p.lon, p.lat] as [number, number],
+							),
+						},
+						properties: { kind: s.kind },
+					}));
+
+				if (transitFeatures.length > 0) {
+					m.addSource("route-transit", {
+						type: "geojson",
+						data: { type: "FeatureCollection", features: transitFeatures },
+					});
+					m.addLayer({
+						id: "route-transit-line",
+						type: "line",
+						source: "route-transit",
+						paint: { "line-color": "#0a6cff", "line-width": 5 },
+						layout: { "line-cap": "round", "line-join": "round" },
+					});
+				}
+				if (walkFeatures.length > 0) {
+					m.addSource("route-walk", {
+						type: "geojson",
+						data: { type: "FeatureCollection", features: walkFeatures },
+					});
+					m.addLayer({
+						id: "route-walk-line",
+						type: "line",
+						source: "route-walk",
+						paint: {
+							"line-color": "#888",
+							"line-width": 3,
+							"line-dasharray": [1, 1.5],
+						},
+						layout: { "line-cap": "round", "line-join": "round" },
+					});
+				}
+
+				const Marker = mlib.Marker;
+				for (const p of map.points) {
+					const role = p.role ?? "stop";
+					const color =
+						role === "origin"
+							? "#16a34a"
+							: role === "destination"
+								? "#dc2626"
+								: "#555";
+					new Marker({ color }).setLngLat([p.lon, p.lat]).addTo(m);
+				}
+
+				if (map.bounds) {
+					m.fitBounds(
+						[
+							[map.bounds.minLon, map.bounds.minLat],
+							[map.bounds.maxLon, map.bounds.maxLat],
+						],
+						{ padding: 40, duration: 0 },
+					);
+				} else if (map.points.length > 0) {
+					const lats = map.points.map((p) => p.lat);
+					const lons = map.points.map((p) => p.lon);
+					m.fitBounds(
+						[
+							[Math.min(...lons), Math.min(...lats)],
+							[Math.max(...lons), Math.max(...lats)],
+						],
+						{ padding: 40, duration: 0 },
+					);
+				}
 			});
 		});
 		return () => {
 			cancelled = true;
-			const map = mapRef.current as { remove?: () => void } | null;
-			if (map?.remove) map.remove();
+			const m = mapRef.current as { remove?: () => void } | null;
+			if (m?.remove) m.remove();
 			mapRef.current = null;
 		};
-	}, [mapStyleUrl, geometry]);
+	}, [mapStyleUrl, map]);
 
 	return <div className="map-view" ref={containerRef} />;
 }
