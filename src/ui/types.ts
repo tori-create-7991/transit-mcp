@@ -24,6 +24,7 @@ export type PlanMapPoint = {
 	lat: number;
 	lon: number;
 	role?: string;
+	operatorId?: string;
 };
 
 export type PlanMapSegment = {

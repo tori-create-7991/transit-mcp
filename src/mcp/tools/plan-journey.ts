@@ -78,6 +78,7 @@ export type PlanMapPoint = {
 	lat: number;
 	lon: number;
 	role?: string;
+	operatorId?: string;
 };
 
 export type PlanMapSegment = {
@@ -308,6 +309,13 @@ function looksLikeEndpoint(value: string): boolean {
 	return /^[A-Za-z0-9._-]+:[A-Za-z0-9._-]+/.test(value);
 }
 
+function extractOperatorId(id: string): string | undefined {
+	const parts = id.split(/[-:]/).filter((part) => part.length > 0);
+	if (parts.length === 0) return undefined;
+	if (parts[0] === "scrape") return parts[1];
+	return parts[0];
+}
+
 async function resolveEndpoint(
 	client: TransitClient,
 	value: string,
@@ -465,6 +473,10 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 						if (p.id) pt.id = p.id;
 						if (p.name) pt.name = p.name;
 						if (p.role) pt.role = p.role;
+						if (p.id) {
+							const operatorId = extractOperatorId(p.id);
+							if (operatorId) pt.operatorId = operatorId;
+						}
 						return pt;
 					});
 				const segments: PlanMapSegment[] = (o.map.segments ?? []).map((s) => ({

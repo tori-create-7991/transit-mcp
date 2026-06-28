@@ -26,6 +26,24 @@ type MapLibreMap = {
 	remove: () => void;
 };
 
+export function operatorColor(operatorId?: string): string | undefined {
+	if (!operatorId) return undefined;
+	const id = operatorId.toLowerCase();
+	if (id.startsWith("jr")) return "#16a34a";
+	if (id === "tokyometro" || id === "metro") return "#1d3a85";
+	if (id === "toei") return "#0a8a72";
+	if (
+		["keio", "odakyu", "tokyu", "keisei", "keikyu", "seibu", "tobu"].includes(
+			id,
+		)
+	) {
+		return "#f07c1c";
+	}
+	if (id === "bus") return "#666";
+	if (id === "airport") return "#7c3aed";
+	return undefined;
+}
+
 export function MapView(props: {
 	mapStyleUrl: string;
 	mapStyleUrlDark?: string;
@@ -123,8 +141,12 @@ export function MapView(props: {
 							? "#16a34a"
 							: role === "destination"
 								? "#dc2626"
-								: "#555";
-					new Marker({ color }).setLngLat([p.lon, p.lat]).addTo(m as never);
+								: (operatorColor(p.operatorId) ?? "#555");
+					const marker = new Marker({ color })
+						.setLngLat([p.lon, p.lat])
+						.addTo(m as never);
+					const title = [p.name, p.operatorId].filter(Boolean).join(" / ");
+					if (title) marker.getElement().setAttribute("title", title);
 				}
 
 				const initial = focusBounds ?? map.bounds;
