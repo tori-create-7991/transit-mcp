@@ -468,8 +468,20 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 			}
 		}
 
+		// Text payload includes the live iframe URL verbatim so hosts that
+		// don't auto-render `_meta.ui.resourceUri` (e.g. ChatGPT custom
+		// connectors today) still surface a working clickable link to the
+		// user. Hosts that DO render the iframe (Claude Desktop) ignore
+		// the URL in text and use the resource directly.
+		const textParts = [summary];
+		if (resourceUri) {
+			textParts.push(
+				"",
+				lang === "ja" ? `地図: ${resourceUri}` : `Map: ${resourceUri}`,
+			);
+		}
 		return {
-			content: [{ type: "text", text: summary }],
+			content: [{ type: "text", text: textParts.join("\n") }],
 			structuredContent: {
 				summary,
 				options,

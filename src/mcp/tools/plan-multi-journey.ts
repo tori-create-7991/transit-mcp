@@ -383,8 +383,15 @@ export const createPlanMultiJourneyTool: ToolFactory<PlanMultiJourneyArgs> =
 			}
 		}
 
+		const textParts = [summary];
+		if (resourceUri) {
+			textParts.push(
+				"",
+				lang === "ja" ? `地図: ${resourceUri}` : `Map: ${resourceUri}`,
+			);
+		}
 		return {
-			content: [{ type: "text", text: summary }],
+			content: [{ type: "text", text: textParts.join("\n") }],
 			structuredContent: {
 				summary,
 				options: [combined],
