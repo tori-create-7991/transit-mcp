@@ -578,3 +578,68 @@ body,
 .app--dark .attribution__details {
   border-color: #3a4770;
 }
+
+@media (max-width: 640px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 50vh auto;
+    grid-template-areas:
+      "list"
+      "map"
+      "attr";
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .app__routes {
+    padding: 56px 8px 8px;
+    max-height: 50vh;
+  }
+
+  .app__routes--multi,
+  .app__routes--compare {
+    max-height: none;
+  }
+
+  .map-view {
+    /* grid item takes care of sizing; relax absolute fill */
+    position: relative;
+    height: 50vh;
+  }
+
+  .app__map {
+    height: 50vh;
+  }
+
+  .lang-toggle {
+    top: 8px;
+    right: 8px;
+    font-size: 12px;
+    padding: 2px 6px;
+  }
+
+  .app__compare-toggle {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .route-card {
+    padding: 10px 12px;
+  }
+
+  .route-card__header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .leg-picker__chip {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .route-compare th,
+  .route-compare td {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
