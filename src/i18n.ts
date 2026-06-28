@@ -32,6 +32,8 @@ const ja: Dict = {
 	loading: "読み込み中",
 	search_places_summary: "{{count}} 件の候補が見つかりました",
 	search_places_empty: "候補が見つかりませんでした",
+	places_reverse_summary: "{{count}} 件の近隣スポットが見つかりました",
+	places_reverse_empty: "近隣にスポットが見つかりませんでした",
 	station_summary: "{{name}}（{{routeCount}} 路線・{{platformCount}} ホーム）",
 	departures_summary: "{{name}} の今後 {{count}} 本の発車",
 	departures_empty: "{{name}} に発車情報がありません",
@@ -56,6 +58,8 @@ const en: Dict = {
 	loading: "Loading",
 	search_places_summary: "{{count}} places found",
 	search_places_empty: "No matching places",
+	places_reverse_summary: "{{count}} nearby places found",
+	places_reverse_empty: "No nearby places found",
 	station_summary:
 		"{{name}} ({{routeCount}} routes, {{platformCount}} platforms)",
 	departures_summary: "{{count}} upcoming departures at {{name}}",

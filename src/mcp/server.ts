@@ -25,6 +25,13 @@ import type { Env } from "../env.js";
 import { transitClient } from "../transit/client.js";
 import { PLAN_HTML_BRIDGE } from "./resources/ui-html.generated.js";
 import {
+	createPlacesReverseTool,
+	PLACES_REVERSE_DESCRIPTION,
+	PLACES_REVERSE_INPUT_SCHEMA,
+	PLACES_REVERSE_NAME,
+	validatePlacesReverse,
+} from "./tools/places-reverse.js";
+import {
 	createPlanJourneyTool,
 	PLAN_JOURNEY_DESCRIPTION,
 	PLAN_JOURNEY_INPUT_SCHEMA,
@@ -78,6 +85,11 @@ const TOOL_DEFS = [
 		inputSchema: SEARCH_PLACES_INPUT_SCHEMA,
 	},
 	{
+		name: PLACES_REVERSE_NAME,
+		description: PLACES_REVERSE_DESCRIPTION,
+		inputSchema: PLACES_REVERSE_INPUT_SCHEMA,
+	},
+	{
 		name: STATION_DETAIL_NAME,
 		description: STATION_DETAIL_DESCRIPTION,
 		inputSchema: STATION_DETAIL_INPUT_SCHEMA,
@@ -127,6 +139,7 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 
 	const handlers = {
 		[SEARCH_PLACES_NAME]: createSearchPlacesTool(client),
+		[PLACES_REVERSE_NAME]: createPlacesReverseTool(client),
 		[STATION_DETAIL_NAME]: createStationDetailTool(client),
 		[STATION_DEPARTURES_NAME]: createStationDeparturesTool(client),
 		[PLAN_JOURNEY_NAME]: createPlanJourneyTool(client),
@@ -135,6 +148,7 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 
 	const validators: Record<string, (raw: unknown) => { lang?: "ja" | "en" }> = {
 		[SEARCH_PLACES_NAME]: validateSearchPlaces,
+		[PLACES_REVERSE_NAME]: validatePlacesReverse,
 		[STATION_DETAIL_NAME]: validateStationDetail,
 		[STATION_DEPARTURES_NAME]: validateStationDepartures,
 		[PLAN_JOURNEY_NAME]: validatePlanJourney,
