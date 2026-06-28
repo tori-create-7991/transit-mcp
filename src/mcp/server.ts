@@ -89,20 +89,22 @@ const TOOL_DEFS = [
 	},
 	{
 		name: PLAN_JOURNEY_NAME,
+		title: "Plan a Japanese transit journey",
 		description: PLAN_JOURNEY_DESCRIPTION,
 		inputSchema: PLAN_JOURNEY_INPUT_SCHEMA,
 		_meta: {
-			"openai/outputTemplate": UI_WIDGET_URI,
 			ui: { resourceUri: UI_WIDGET_URI },
+			"ui/resourceUri": UI_WIDGET_URI,
 		},
 	},
 	{
 		name: PLAN_MULTI_JOURNEY_NAME,
+		title: "Plan a multi-leg Japanese transit journey",
 		description: PLAN_MULTI_JOURNEY_DESCRIPTION,
 		inputSchema: PLAN_MULTI_JOURNEY_INPUT_SCHEMA,
 		_meta: {
-			"openai/outputTemplate": UI_WIDGET_URI,
 			ui: { resourceUri: UI_WIDGET_URI },
+			"ui/resourceUri": UI_WIDGET_URI,
 		},
 	},
 ] as const;
@@ -146,6 +148,7 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 		tools: TOOL_DEFS.map((t) => {
 			const def: {
 				name: string;
+				title?: string;
 				description: string;
 				inputSchema: unknown;
 				_meta?: Record<string, unknown>;
@@ -154,6 +157,7 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 				description: t.description,
 				inputSchema: t.inputSchema,
 			};
+			if ("title" in t && t.title) def.title = t.title;
 			if ("_meta" in t && t._meta) def._meta = t._meta;
 			return def;
 		}),
@@ -218,11 +222,13 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 					_meta: {
 						ui: {
 							csp: {
+								// Tile / API fetches from inside the iframe.
 								connectDomains: [
 									"https://tiles.openfreemap.org",
 									"https://api.transit.ls8h.com",
 								],
-								imageDomains: ["https://tiles.openfreemap.org"],
+								// Scripts/styles/images the iframe may load.
+								resourceDomains: ["https://tiles.openfreemap.org"],
 							},
 						},
 					},

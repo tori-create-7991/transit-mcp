@@ -42,8 +42,30 @@ app.all("/mcp", async (c) => {
 	});
 
 	await server.connect(transport);
+
+	// Debug: clone the request body and log initialize bodies so we can
+	// inspect what each client advertises (e.g. does ChatGPT include
+	// the MCP Apps UI extension in clientCapabilities?). Cheap to enable
+	// short-term; remove once Apps SDK debugging is done.
 	try {
-		return await transport.handleRequest(c.req.raw);
+		const rawReq = c.req.raw;
+		const ua = rawReq.headers.get("user-agent") ?? "";
+		if (rawReq.method === "POST" && /chatgpt|openai/i.test(ua)) {
+			const cloned = rawReq.clone();
+			try {
+				const body = await cloned.text();
+				console.log(
+					JSON.stringify({
+						debug: "chatgpt-init",
+						ua,
+						body: body.slice(0, 4000),
+					}),
+				);
+			} catch {
+				/* ignore */
+			}
+		}
+		return await transport.handleRequest(rawReq);
 	} finally {
 		// Per-request transports must be closed to release resources.
 		await transport.close().catch(() => {

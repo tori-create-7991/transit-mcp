@@ -242,42 +242,29 @@ function MultiLegApp(props: {
 }
 
 /**
- * ChatGPT Apps SDK bridge. When the iframe is rendered inside ChatGPT,
- * `window.openai` is exposed by the host:
- *   - `openai.toolOutput` mirrors the calling tool's structuredContent
- *   - `openai.toolInput` mirrors the calling tool's arguments
- *   - `openai.theme` / `openai.locale` give host preferences
- * Data can also arrive asynchronously, so we subscribe to the change
- * event and re-render on update.
+ * MCP Apps SDK bridge. When the iframe is rendered inside ChatGPT / Claude
+ * Desktop / any MCP Apps host, the host runs an `AppBridge` on its side and
+ * we run the corresponding `App` on the iframe side. The protocol is
+ * JSON-RPC over `postMessage`:
+ *   - we send `ui/notifications/initialized` after `connect()`
+ *   - host sends `ui/notifications/tool-result` whose `params` is the
+ *     CallToolResult (including `structuredContent`)
  *
- * For Claude Desktop and direct browser views (`?d=` URL fallback) the
- * data lives in `window.__TRANSIT_DATA__` instead — kept here so a
- * single bundled HTML serves all three hosts.
+ * For direct browser views (`?d=` / `?k=` URL fallback) the data is already
+ * in `window.__TRANSIT_DATA__`, so we skip the bridge entirely.
  */
-type OpenAiBridge = {
-	toolOutput?: { structuredContent?: unknown } | unknown;
-	theme?: { mode?: "light" | "dark" };
-	locale?: string;
-	displayMode?: "inline" | "fullscreen";
-	addEventListener?: (
-		type: "openai:tool_output" | "openai:state_changed",
-		listener: () => void,
-	) => void;
-};
-
-declare global {
-	interface Window {
-		openai?: OpenAiBridge;
-	}
-}
+import {
+	App as McpApp,
+	PostMessageTransport,
+} from "@modelcontextprotocol/ext-apps/app-with-deps";
 
 const DEFAULT_MAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
 
-function readBridgePlan(): PlanData | undefined {
-	const out = window.openai?.toolOutput as
-		| { structuredContent?: unknown }
+function extractPlanFromResult(result: unknown): PlanData | undefined {
+	if (!result || typeof result !== "object") return undefined;
+	const sc = (result as { structuredContent?: unknown }).structuredContent as
+		| Partial<PlanData>
 		| undefined;
-	const sc = (out?.structuredContent ?? out) as Partial<PlanData> | undefined;
 	if (!sc || typeof sc !== "object") return undefined;
 	if (!Array.isArray(sc.options) && !Array.isArray(sc.legGroups))
 		return undefined;
@@ -288,7 +275,7 @@ function bridgeBoot(
 	plan: PlanData,
 	locale: string | undefined,
 ): IframeBootstrap {
-	const lang: "ja" | "en" = locale?.startsWith("ja") ? "ja" : "en";
+	const lang: "ja" | "en" = locale?.startsWith("en") ? "en" : "ja";
 	return {
 		plan,
 		attribution: {
@@ -300,6 +287,34 @@ function bridgeBoot(
 		mapStyleUrl: DEFAULT_MAP_STYLE,
 		lang,
 	};
+}
+
+async function connectAppBridge(
+	render: (boot: IframeBootstrap) => void,
+): Promise<void> {
+	// We're not a parent — only run when sandboxed inside a host iframe.
+	if (typeof window === "undefined" || window.parent === window) return;
+	try {
+		const app = new McpApp(
+			{ name: "transit-mcp-widget", version: "0.1.0" },
+			// We don't expose any in-iframe tools; the host owns the server.
+			{},
+		);
+		const onResult = (params: unknown) => {
+			const plan = extractPlanFromResult(params);
+			if (plan) {
+				const locale = app.getHostContext()?.locale;
+				render(bridgeBoot(plan, locale));
+			}
+		};
+		app.addEventListener("toolresult", onResult);
+		// `connect()` defaults to PostMessageTransport(window.parent,
+		// window.parent) when called without args; we pass it explicitly to
+		// be defensive across SDK versions.
+		await app.connect(new PostMessageTransport(window.parent, window.parent));
+	} catch (err) {
+		console.warn("MCP App bridge connect failed:", err);
+	}
 }
 
 function bootstrap(): void {
@@ -315,21 +330,9 @@ function bootstrap(): void {
 		return;
 	}
 
-	const bridgePlan = readBridgePlan();
-	if (bridgePlan) {
-		render(bridgeBoot(bridgePlan, window.openai?.locale));
-	} else {
-		container.textContent = "Waiting for plan data…";
-	}
-
-	// ChatGPT may stream tool output after the iframe loads. Subscribe so
-	// we re-render whenever the bridge surfaces a new structuredContent.
-	const onUpdate = () => {
-		const next = readBridgePlan();
-		if (next) render(bridgeBoot(next, window.openai?.locale));
-	};
-	window.openai?.addEventListener?.("openai:tool_output", onUpdate);
-	window.openai?.addEventListener?.("openai:state_changed", onUpdate);
+	// Placeholder until the host sends us the tool result.
+	container.textContent = "Waiting for plan data…";
+	void connectAppBridge(render);
 }
 
 bootstrap();
