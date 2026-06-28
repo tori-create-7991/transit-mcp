@@ -45,8 +45,19 @@ export function RouteCard(props: {
 	active?: boolean;
 	onSelect?: () => void;
 	defaultExpanded?: boolean;
+	focusedLegIdx?: number | undefined;
+	onLegFocus?: ((legIdx: number | null) => void) | undefined;
 }): ReactElement {
-	const { option, rank, t, active, onSelect, defaultExpanded } = props;
+	const {
+		option,
+		rank,
+		t,
+		active,
+		onSelect,
+		defaultExpanded,
+		focusedLegIdx,
+		onLegFocus,
+	} = props;
 	const [expanded, setExpanded] = useState(defaultExpanded ?? false);
 	const minutes = Math.round(option.durationSec / 60);
 	return (
@@ -81,6 +92,13 @@ export function RouteCard(props: {
 							{option.fareYen !== undefined
 								? t("route.fare_yen", { yen: option.fareYen })
 								: t("route.no_fare")}
+							{option.fareIcYen !== undefined &&
+							option.fareIcYen !== option.fareYen ? (
+								<span className="route-card__fare-ic">
+									{" "}
+									· {t("route.fare_ic", { yen: option.fareIcYen })}
+								</span>
+							) : null}
 						</dd>
 					</div>
 				</dl>
@@ -99,11 +117,34 @@ export function RouteCard(props: {
 			<ol className="route-card__legs">
 				{option.legs.map((leg, idx) => {
 					const color = lineColor(leg);
+					const isFocused = focusedLegIdx === idx;
 					return (
 						<li
-							className="route-card__leg"
+							className={`route-card__leg${
+								isFocused ? " route-card__leg--focused" : ""
+							}${onLegFocus ? " route-card__leg--clickable" : ""}`}
 							data-mode={leg.mode}
 							style={color ? { borderLeftColor: color } : undefined}
+							onClick={
+								onLegFocus
+									? (e) => {
+											e.stopPropagation();
+											onLegFocus(isFocused ? null : idx);
+										}
+									: undefined
+							}
+							onKeyDown={
+								onLegFocus
+									? (e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												e.stopPropagation();
+												onLegFocus(isFocused ? null : idx);
+											}
+										}
+									: undefined
+							}
+							tabIndex={onLegFocus ? 0 : -1}
 							// biome-ignore lint/suspicious/noArrayIndexKey: leg list is fully derived
 							key={idx}
 						>

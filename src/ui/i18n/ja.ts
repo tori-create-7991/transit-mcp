@@ -16,7 +16,9 @@ export type Dict = {
 	"route.minutes": string;
 	"route.transfers_count": string;
 	"route.fare_yen": string;
+	"route.fare_ic": string;
 	"route.no_fare": string;
+	"map.reset_zoom": string;
 	"route.show_detail": string;
 	"route.hide_detail": string;
 	"route.leg_count": string;
@@ -48,7 +50,9 @@ export const ja: Dict = {
 	"route.minutes": "{count}分",
 	"route.transfers_count": "{count}回",
 	"route.fare_yen": "{yen}円",
+	"route.fare_ic": "IC {yen}円",
 	"route.no_fare": "—",
+	"map.reset_zoom": "全体表示",
 	"route.show_detail": "詳細を表示",
 	"route.hide_detail": "閉じる",
 	"route.leg_count": "{count} 区間",

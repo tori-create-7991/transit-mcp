@@ -274,6 +274,44 @@ body,
   border-left-color: #aaa;
 }
 
+.route-card__leg--clickable {
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    box-shadow 0.12s;
+}
+
+.route-card__leg--clickable:hover {
+  background: #f0f3fa;
+}
+
+.route-card__leg--focused {
+  background: #eef4ff;
+  box-shadow: inset 2px 0 0 #0a6cff;
+}
+
+.route-card__fare-ic {
+  color: #666;
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.app__reset-zoom {
+  align-self: flex-start;
+  margin: 4px 0 0;
+  background: #fff;
+  border: 1px solid #0a6cff;
+  color: #0a6cff;
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.app__reset-zoom:hover {
+  background: #eef4ff;
+}
+
 .route-card__leg-line {
   font-weight: 600;
 }

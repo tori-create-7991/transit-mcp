@@ -30,6 +30,13 @@ import {
 	type ToolResult,
 } from "./shared.js";
 
+export type PlanStrategy =
+	| "balanced"
+	| "fastest"
+	| "fewestTransfers"
+	| "lowestFare"
+	| "shortestWalk";
+
 export type PlanJourneyArgs = {
 	from: string;
 	to: string;
@@ -40,6 +47,14 @@ export type PlanJourneyArgs = {
 	avoidModes?: string[];
 	allowModes?: string[];
 	avoidWalk?: boolean;
+	/**
+	 * Optimization strategy passed through to the Transit API. Default is
+	 * `balanced` (server-side). Use `fastest` / `lowestFare` /
+	 * `fewestTransfers` / `shortestWalk` to bias the ranking.
+	 */
+	strategy?: PlanStrategy;
+	/** Apply realtime delay / disruption data when available. */
+	live?: boolean;
 	lang?: Lang;
 };
 
@@ -86,7 +101,10 @@ export type PlanMapData = {
 export type PlanOption = {
 	durationSec: number;
 	transfers: number;
+	/** Ticket (paper / one-shot) fare in JPY. */
 	fareYen?: number;
+	/** IC card fare in JPY, when the feed distinguishes it from ticket. */
+	fareIcYen?: number;
 	legs: PlanLeg[];
 	map?: PlanMapData;
 };
@@ -180,6 +198,23 @@ export const PLAN_JOURNEY_INPUT_SCHEMA: JsonSchema = {
 			maximum: 10,
 			description: "Maximum allowed transfers (0-10).",
 		},
+		strategy: {
+			type: "string",
+			enum: [
+				"balanced",
+				"fastest",
+				"fewestTransfers",
+				"lowestFare",
+				"shortestWalk",
+			],
+			description:
+				"Bias the planner ranking. `fastest` minimises duration, `lowestFare` minimises ticket price, `fewestTransfers` minimises 乗換 count, `shortestWalk` minimises walking. Defaults to `balanced` server-side.",
+		},
+		live: {
+			type: "boolean",
+			description:
+				"Apply realtime delay / disruption data when the underlying feed publishes it. May slow the response slightly.",
+		},
 		lang: {
 			type: "string",
 			enum: ["ja", "en"],
@@ -253,6 +288,16 @@ export function validatePlanJourney(raw: unknown): PlanJourneyArgs {
 	const allow = pickModes(obj.allowModes);
 	if (allow) out.allowModes = allow;
 	if (typeof obj.avoidWalk === "boolean") out.avoidWalk = obj.avoidWalk;
+	if (
+		obj.strategy === "balanced" ||
+		obj.strategy === "fastest" ||
+		obj.strategy === "fewestTransfers" ||
+		obj.strategy === "lowestFare" ||
+		obj.strategy === "shortestWalk"
+	) {
+		out.strategy = obj.strategy;
+	}
+	if (typeof obj.live === "boolean") out.live = obj.live;
 	return out;
 }
 
@@ -339,6 +384,9 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 			avoidModes?: string;
 			allowModes?: string;
 			avoidWalk?: "true" | "false";
+			strategy?: PlanStrategy;
+			live?: "true" | "false";
+			tracking?: "origin" | "destination" | "both";
 		};
 		const query: GuidanceQuery = { from, to };
 		// `via` is honored only for departure/arrival queries (per API spec).
@@ -353,6 +401,12 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 		if (args.avoidModes?.length) query.avoidModes = args.avoidModes.join(",");
 		if (args.allowModes?.length) query.allowModes = args.allowModes.join(",");
 		if (args.avoidWalk) query.avoidWalk = "true";
+		if (args.strategy) query.strategy = args.strategy;
+		if (args.live) {
+			query.live = "true";
+			// API requires `tracking` when `live=true`; default to "origin".
+			query.tracking = "origin";
+		}
 
 		const { data, error, response } = await client.GET(
 			"/api/v1/guidance/plan",
@@ -399,6 +453,7 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 				legs,
 			};
 			if (j.fare?.ticket !== undefined) opt.fareYen = j.fare.ticket;
+			if (j.fare?.ic !== undefined) opt.fareIcYen = j.fare.ic;
 			if (o.map) {
 				const points: PlanMapPoint[] = (o.map.points ?? [])
 					.filter((p) => typeof p.lat === "number" && typeof p.lon === "number")

@@ -48,6 +48,7 @@ export type PlanOptionUi = {
 	durationSec: number;
 	transfers: number;
 	fareYen?: number;
+	fareIcYen?: number;
 	legs: PlanLegUi[];
 	map?: PlanMapData;
 };

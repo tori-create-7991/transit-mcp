@@ -46,6 +46,13 @@ export type MultiLegArgs = {
 	allowModes?: string[];
 	avoidWalk?: boolean;
 	maxTransfers?: number;
+	strategy?:
+		| "balanced"
+		| "fastest"
+		| "fewestTransfers"
+		| "lowestFare"
+		| "shortestWalk";
+	live?: boolean;
 	note?: string;
 };
 
@@ -123,6 +130,21 @@ const LEG_PROPS: Record<string, unknown> = {
 		minimum: 0,
 		maximum: 10,
 		description: "Max transfers within this leg.",
+	},
+	strategy: {
+		type: "string",
+		enum: [
+			"balanced",
+			"fastest",
+			"fewestTransfers",
+			"lowestFare",
+			"shortestWalk",
+		],
+		description: "Bias the planner ranking for this leg.",
+	},
+	live: {
+		type: "boolean",
+		description: "Apply realtime delay / disruption data for this leg.",
 	},
 	note: {
 		type: "string",
@@ -207,6 +229,16 @@ export function validatePlanMultiJourney(raw: unknown): PlanMultiJourneyArgs {
 		if (typeof leg.avoidWalk === "boolean") out.avoidWalk = leg.avoidWalk;
 		if (typeof leg.maxTransfers === "number")
 			out.maxTransfers = leg.maxTransfers;
+		if (
+			leg.strategy === "balanced" ||
+			leg.strategy === "fastest" ||
+			leg.strategy === "fewestTransfers" ||
+			leg.strategy === "lowestFare" ||
+			leg.strategy === "shortestWalk"
+		) {
+			out.strategy = leg.strategy;
+		}
+		if (typeof leg.live === "boolean") out.live = leg.live;
 		if (typeof leg.note === "string" && leg.note.length > 0)
 			out.note = leg.note;
 		return out;
@@ -286,6 +318,8 @@ export const createPlanMultiJourneyTool: ToolFactory<PlanMultiJourneyArgs> =
 				...(leg.avoidModes ? { avoidModes: leg.avoidModes } : {}),
 				...(leg.allowModes ? { allowModes: leg.allowModes } : {}),
 				...(leg.avoidWalk ? { avoidWalk: leg.avoidWalk } : {}),
+				...(leg.strategy ? { strategy: leg.strategy } : {}),
+				...(leg.live ? { live: leg.live } : {}),
 			});
 			const result = await innerHandler(planArgs, lang);
 			const sc = result.structuredContent as
@@ -339,6 +373,11 @@ export const createPlanMultiJourneyTool: ToolFactory<PlanMultiJourneyArgs> =
 			.filter((y): y is number => typeof y === "number");
 		const totalFare =
 			fares.length > 0 ? fares.reduce((a, b) => a + b, 0) : undefined;
+		const icFares = perLegOptions
+			.map((o) => o.fareIcYen)
+			.filter((y): y is number => typeof y === "number");
+		const totalIcFare =
+			icFares.length > 0 ? icFares.reduce((a, b) => a + b, 0) : undefined;
 		const flatLegs: PlanLeg[] = perLegOptions.flatMap((o) => o.legs);
 		const combinedMap = combineMaps(
 			perLegOptions.map((o) => o.map).filter((m): m is PlanMapData => !!m),
@@ -358,6 +397,7 @@ export const createPlanMultiJourneyTool: ToolFactory<PlanMultiJourneyArgs> =
 			map: combinedMap,
 		};
 		if (totalFare !== undefined) combined.fareYen = totalFare;
+		if (totalIcFare !== undefined) combined.fareIcYen = totalIcFare;
 
 		let resourceUri = "";
 		if (ctx) {

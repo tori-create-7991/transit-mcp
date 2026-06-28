@@ -140,6 +140,36 @@ function App(props: { boot: IframeBootstrap }): ReactElement {
 	return <SingleLegApp boot={boot} lang={lang} onLang={onLang} t={t} />;
 }
 
+function boundsForLeg(
+	map: PlanMapData | undefined,
+	legIdx: number,
+): PlanMapBounds | undefined {
+	if (!map) return undefined;
+	const seg = map.segments[legIdx];
+	if (!seg || seg.polyline.length === 0) return undefined;
+	let minLat = Infinity;
+	let maxLat = -Infinity;
+	let minLon = Infinity;
+	let maxLon = -Infinity;
+	for (const p of seg.polyline) {
+		if (p.lat < minLat) minLat = p.lat;
+		if (p.lat > maxLat) maxLat = p.lat;
+		if (p.lon < minLon) minLon = p.lon;
+		if (p.lon > maxLon) maxLon = p.lon;
+	}
+	if (!Number.isFinite(minLat)) return undefined;
+	// Pad single-point segments so fitBounds doesn't degenerate.
+	if (minLat === maxLat) {
+		minLat -= 0.001;
+		maxLat += 0.001;
+	}
+	if (minLon === maxLon) {
+		minLon -= 0.001;
+		maxLon += 0.001;
+	}
+	return { minLat, minLon, maxLat, maxLon };
+}
+
 function SingleLegApp(props: {
 	boot: IframeBootstrap;
 	lang: UiLang;
@@ -153,6 +183,17 @@ function SingleLegApp(props: {
 	const [selectedIdx, setSelectedIdx] = useState(0);
 	const safeIdx = Math.min(selectedIdx, Math.max(options.length - 1, 0));
 	const selectedMap = options[safeIdx]?.map;
+	const [focusedLeg, setFocusedLeg] = useState<number | null>(null);
+	const focusBounds = useMemo(
+		() =>
+			focusedLeg !== null ? boundsForLeg(selectedMap, focusedLeg) : undefined,
+		[selectedMap, focusedLeg],
+	);
+
+	const handleSelectOption = (idx: number) => {
+		setSelectedIdx(idx);
+		setFocusedLeg(null);
+	};
 
 	return (
 		<div className="app">
@@ -167,16 +208,37 @@ function SingleLegApp(props: {
 							rank={idx + 1}
 							t={t}
 							active={idx === safeIdx}
-							onSelect={() => setSelectedIdx(idx)}
+							onSelect={() => handleSelectOption(idx)}
+							focusedLegIdx={
+								idx === safeIdx ? (focusedLeg ?? undefined) : undefined
+							}
+							onLegFocus={idx === safeIdx ? setFocusedLeg : undefined}
 						/>
 					))
 				) : (
 					<li className="empty-state">{t("error.no_data")}</li>
 				)}
+				{focusedLeg !== null ? (
+					<button
+						type="button"
+						className="app__reset-zoom"
+						onClick={() => setFocusedLeg(null)}
+					>
+						{t("map.reset_zoom")}
+					</button>
+				) : null}
 			</ol>
 			<div className="app__map">
 				{selectedMap ? (
-					<MapView mapStyleUrl={boot.mapStyleUrl} map={selectedMap} />
+					focusBounds ? (
+						<MapView
+							mapStyleUrl={boot.mapStyleUrl}
+							map={selectedMap}
+							focusBounds={focusBounds}
+						/>
+					) : (
+						<MapView mapStyleUrl={boot.mapStyleUrl} map={selectedMap} />
+					)
 				) : (
 					<MapView mapStyleUrl={boot.mapStyleUrl} />
 				)}
@@ -211,22 +273,58 @@ function MultiLegApp(props: {
 		[groups, safeIndices],
 	);
 	const combinedMap = combined.map;
+	const [focusedLeg, setFocusedLeg] = useState<number | null>(null);
+	const focusBounds = useMemo(
+		() =>
+			focusedLeg !== null ? boundsForLeg(combinedMap, focusedLeg) : undefined,
+		[combinedMap, focusedLeg],
+	);
+
+	const handleSetIndices = (next: number[]) => {
+		setIndices(next);
+		setFocusedLeg(null);
+	};
 
 	return (
 		<div className="app">
 			<LangToggle lang={lang} onChange={onLang} t={t} />
 			<div className="app__routes app__routes--multi">
-				<RouteCard option={combined} rank={1} t={t} active defaultExpanded />
+				<RouteCard
+					option={combined}
+					rank={1}
+					t={t}
+					active
+					defaultExpanded
+					focusedLegIdx={focusedLeg ?? undefined}
+					onLegFocus={setFocusedLeg}
+				/>
+				{focusedLeg !== null ? (
+					<button
+						type="button"
+						className="app__reset-zoom"
+						onClick={() => setFocusedLeg(null)}
+					>
+						{t("map.reset_zoom")}
+					</button>
+				) : null}
 				<LegPicker
 					groups={groups}
 					selectedIndices={safeIndices}
-					onChange={setIndices}
+					onChange={handleSetIndices}
 					t={t}
 				/>
 			</div>
 			<div className="app__map">
 				{combinedMap ? (
-					<MapView mapStyleUrl={boot.mapStyleUrl} map={combinedMap} />
+					focusBounds ? (
+						<MapView
+							mapStyleUrl={boot.mapStyleUrl}
+							map={combinedMap}
+							focusBounds={focusBounds}
+						/>
+					) : (
+						<MapView mapStyleUrl={boot.mapStyleUrl} map={combinedMap} />
+					)
 				) : (
 					<MapView mapStyleUrl={boot.mapStyleUrl} />
 				)}

@@ -5,18 +5,36 @@
  * as a GeoJSON source and the view is fit to the bounds. Transit
  * segments get a solid blue line; walks render as a dashed gray line.
  * Origin / destination / transfer points are placed as small markers.
+ *
+ * `focusBounds` (optional) animates the camera to that bbox without
+ * re-creating the map — used when the user clicks a route leg to zoom
+ * onto a single segment. Clearing it (`undefined`) animates back to
+ * the full plan bounds.
  */
 
 import { type ReactElement, useEffect, useRef } from "react";
-import type { PlanMapData } from "../types.js";
+import type { PlanMapBounds, PlanMapData } from "../types.js";
+
+type MapLibreMap = {
+	on: (ev: "load", cb: () => void) => void;
+	addSource: (id: string, src: unknown) => void;
+	addLayer: (layer: unknown) => void;
+	fitBounds: (
+		b: [[number, number], [number, number]],
+		opts: { padding?: number; duration?: number; maxZoom?: number },
+	) => void;
+	remove: () => void;
+};
 
 export function MapView(props: {
 	mapStyleUrl: string;
 	map?: PlanMapData;
+	focusBounds?: PlanMapBounds;
 }): ReactElement {
-	const { mapStyleUrl, map } = props;
+	const { mapStyleUrl, map, focusBounds } = props;
 	const containerRef = useRef<HTMLDivElement | null>(null);
-	const mapRef = useRef<unknown>(null);
+	const mapRef = useRef<MapLibreMap | null>(null);
+	const loadedRef = useRef(false);
 
 	useEffect(() => {
 		if (!containerRef.current) return;
@@ -30,9 +48,11 @@ export function MapView(props: {
 				center: [139.7671, 35.6812],
 				zoom: 10,
 				attributionControl: false,
-			});
+			}) as unknown as MapLibreMap;
 			mapRef.current = m;
+			loadedRef.current = false;
 			m.on("load", () => {
+				loadedRef.current = true;
 				if (!map) return;
 
 				const transitFeatures = map.segments
@@ -100,14 +120,15 @@ export function MapView(props: {
 							: role === "destination"
 								? "#dc2626"
 								: "#555";
-					new Marker({ color }).setLngLat([p.lon, p.lat]).addTo(m);
+					new Marker({ color }).setLngLat([p.lon, p.lat]).addTo(m as never);
 				}
 
-				if (map.bounds) {
+				const initial = focusBounds ?? map.bounds;
+				if (initial) {
 					m.fitBounds(
 						[
-							[map.bounds.minLon, map.bounds.minLat],
-							[map.bounds.maxLon, map.bounds.maxLat],
+							[initial.minLon, initial.minLat],
+							[initial.maxLon, initial.maxLat],
 						],
 						{ padding: 40, duration: 0 },
 					);
@@ -126,11 +147,31 @@ export function MapView(props: {
 		});
 		return () => {
 			cancelled = true;
-			const m = mapRef.current as { remove?: () => void } | null;
+			const m = mapRef.current;
 			if (m?.remove) m.remove();
 			mapRef.current = null;
+			loadedRef.current = false;
 		};
+		// Intentionally exclude `focusBounds` from deps: focus changes are
+		// handled by the second effect below without re-mounting the map.
+		// biome-ignore lint/correctness/useExhaustiveDependencies: handled in separate effect
 	}, [mapStyleUrl, map]);
+
+	// Animate camera to focusBounds (or back to overall bounds) without
+	// re-creating the map. Runs after the load handler has populated layers.
+	useEffect(() => {
+		const m = mapRef.current;
+		if (!m || !loadedRef.current) return;
+		const target = focusBounds ?? map?.bounds;
+		if (!target) return;
+		m.fitBounds(
+			[
+				[target.minLon, target.minLat],
+				[target.maxLon, target.maxLat],
+			],
+			{ padding: 60, duration: 600, maxZoom: 16 },
+		);
+	}, [focusBounds, map?.bounds]);
 
 	return <div className="map-view" ref={containerRef} />;
 }
