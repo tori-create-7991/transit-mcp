@@ -11,6 +11,7 @@
 
 import { type ReactElement, useState } from "react";
 import type { Dict } from "../i18n/ja.js";
+import { turnsFromPolyline, type WalkTurn } from "../turns.js";
 import type { PlanLegUi, PlanOptionUi } from "../types.js";
 
 type T = (key: keyof Dict, vars?: Record<string, string | number>) => string;
@@ -50,6 +51,17 @@ function legWalkMeters(leg: PlanLegUi): number {
 function lineColor(leg: PlanLegUi): string | undefined {
 	if (!leg.color) return undefined;
 	return leg.color.startsWith("#") ? leg.color : `#${leg.color}`;
+}
+
+function turnDirectionKey(direction: WalkTurn["direction"]): keyof Dict {
+	switch (direction) {
+		case "sharp-left":
+			return "turn.sharp_left";
+		case "sharp-right":
+			return "turn.sharp_right";
+		default:
+			return `turn.${direction}`;
+	}
 }
 
 function renderDepartTime(leg: PlanLegUi, t: T): ReactElement | string {
@@ -165,6 +177,10 @@ export function RouteCard(props: {
 				{option.legs.map((leg, idx) => {
 					const color = lineColor(leg);
 					const isFocused = focusedLegIdx === idx;
+					const turns =
+						expanded && leg.mode === "walk"
+							? turnsFromPolyline(option.map?.segments[idx]?.polyline ?? [])
+							: [];
 					return (
 						<li
 							className={`route-card__leg${
@@ -230,6 +246,24 @@ export function RouteCard(props: {
 									className="route-card__leg-color"
 									style={{ background: color }}
 								/>
+							) : null}
+							{turns.length > 0 ? (
+								<ul className="route-card__leg-turns">
+									{turns.map((turn) => {
+										const direction = t(turnDirectionKey(turn.direction));
+										return (
+											<li
+												key={`${turn.distanceMeters}-${turn.direction}`}
+												className="route-card__leg-turn"
+											>
+												{t("turn.at_meters", {
+													meters: turn.distanceMeters,
+													direction,
+												})}
+											</li>
+										);
+									})}
+								</ul>
 							) : null}
 						</li>
 					);

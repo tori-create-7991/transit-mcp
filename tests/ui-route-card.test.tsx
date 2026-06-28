@@ -93,4 +93,28 @@ describe("RouteCard", () => {
 
 		vi.useRealTimers();
 	});
+
+	it("renders walk turn instructions from the matching map segment when expanded", () => {
+		const option = optionWithLeg("walk", 13 * 3600);
+		option.map = {
+			points: [],
+			segments: [
+				{
+					kind: "walk",
+					polyline: [
+						{ lat: 35.0002, lon: 139 },
+						{ lat: 35, lon: 139 },
+						{ lat: 35, lon: 139.0002 },
+					],
+				},
+			],
+		};
+
+		const html = renderToStaticMarkup(
+			<RouteCard option={option} rank={1} t={makeT("ja")} defaultExpanded />,
+		);
+
+		expect(html).toContain("route-card__leg-turns");
+		expect(html).toContain("先を 右");
+	});
 });

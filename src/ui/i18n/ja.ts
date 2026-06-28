@@ -31,6 +31,11 @@ export type Dict = {
 	"leg.depart_in_min": string;
 	"leg.duration_min": string;
 	"leg.walk_meters": string;
+	"turn.left": string;
+	"turn.right": string;
+	"turn.sharp_left": string;
+	"turn.sharp_right": string;
+	"turn.at_meters": string;
 	"multi.leg_label": string;
 	"multi.pick_option": string;
 	"multi.total": string;
@@ -69,6 +74,11 @@ export const ja: Dict = {
 	"leg.depart_in_min": "あと {minutes} 分",
 	"leg.duration_min": "{minutes} 分",
 	"leg.walk_meters": "約 {meters} m",
+	"turn.left": "左",
+	"turn.right": "右",
+	"turn.sharp_left": "急な左",
+	"turn.sharp_right": "急な右",
+	"turn.at_meters": "{meters}m 先を {direction}",
 	"multi.leg_label": "区間 {n}: {from} → {to}",
 	"multi.pick_option": "ルートを選択",
 	"multi.total": "合計",

@@ -187,6 +187,13 @@ body,
   color: #666;
 }
 
+.route-card__leg-turns {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: #666;
+  font-size: 11px;
+}
+
 .route-card__leg-color {
   margin-top: 4px;
   height: 3px;
@@ -444,6 +451,7 @@ body,
 .app--dark .route-card__metrics dt,
 .app--dark .route-card__leg-headsign,
 .app--dark .route-card__leg-walk,
+.app--dark .route-card__leg-turns,
 .app--dark .route-card__detail,
 .app--dark .route-card__detail dt,
 .app--dark .route-card__fare-ic,
