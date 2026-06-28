@@ -25,6 +25,8 @@ export type Dict = {
 	"leg.platform": string;
 	"leg.walk": string;
 	"leg.headsign": string;
+	"leg.depart_at": string;
+	"leg.depart_in_min": string;
 	"leg.duration_min": string;
 	"leg.walk_meters": string;
 	"multi.leg_label": string;
@@ -59,6 +61,8 @@ export const ja: Dict = {
 	"leg.platform": "ホーム",
 	"leg.walk": "徒歩",
 	"leg.headsign": "{name} 行",
+	"leg.depart_at": "{time} 発",
+	"leg.depart_in_min": "あと {minutes} 分",
 	"leg.duration_min": "{minutes} 分",
 	"leg.walk_meters": "約 {meters} m",
 	"multi.leg_label": "区間 {n}: {from} → {to}",

@@ -327,6 +327,11 @@ body,
   font-variant-numeric: tabular-nums;
 }
 
+.route-card__leg-countdown {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
 .attribution {
   grid-area: attr;
   display: flex;

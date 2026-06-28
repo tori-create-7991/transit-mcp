@@ -16,11 +16,25 @@ import type { PlanLegUi, PlanOptionUi } from "../types.js";
 type T = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 const WALK_SPEED_M_PER_MIN = 80;
+const JST_OFFSET_SEC = 9 * 3600;
+const DEPARTURE_GRACE_SEC = 5 * 60;
+const DEPARTURE_COUNTDOWN_SEC = 60 * 60;
 
 function formatSecs(secs: number): string {
 	const h = Math.floor(secs / 3600) % 24;
 	const m = Math.floor(secs / 60) % 60;
 	return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+export function secondsUntilDeparture(
+	legDepartSec: number,
+	nowSec = (Date.now() / 1000 + JST_OFFSET_SEC) % 86400,
+): number | null {
+	const diff = legDepartSec - nowSec;
+	if (diff < -DEPARTURE_GRACE_SEC || diff > DEPARTURE_COUNTDOWN_SEC) {
+		return null;
+	}
+	return diff;
 }
 
 function legMinutes(leg: PlanLegUi): number {
@@ -36,6 +50,23 @@ function legWalkMeters(leg: PlanLegUi): number {
 function lineColor(leg: PlanLegUi): string | undefined {
 	if (!leg.color) return undefined;
 	return leg.color.startsWith("#") ? leg.color : `#${leg.color}`;
+}
+
+function renderDepartTime(leg: PlanLegUi, t: T): ReactElement | string {
+	if (leg.mode === "walk") return formatSecs(leg.departSec);
+	const untilDeparture = secondsUntilDeparture(leg.departSec);
+	const departAt = t("leg.depart_at", { time: formatSecs(leg.departSec) });
+	if (untilDeparture === null || untilDeparture < 0) return departAt;
+	const minutes = Math.ceil(untilDeparture / 60);
+	return (
+		<>
+			{departAt}
+			{" · "}
+			<span className="route-card__leg-countdown">
+				{t("leg.depart_in_min", { minutes })}
+			</span>
+		</>
+	);
 }
 
 export function RouteCard(props: {
@@ -163,7 +194,7 @@ export function RouteCard(props: {
 								<span>{leg.toName}</span>
 							</div>
 							<div className="route-card__leg-time">
-								{formatSecs(leg.departSec)} → {formatSecs(leg.arriveSec)} ·{" "}
+								{renderDepartTime(leg, t)} → {formatSecs(leg.arriveSec)} ·{" "}
 								{t("leg.duration_min", { minutes: legMinutes(leg) })}
 								{leg.platform !== undefined ? (
 									<span className="route-card__leg-platform">

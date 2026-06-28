@@ -23,6 +23,8 @@ export const en: Dict = {
 	"leg.platform": "Platform",
 	"leg.walk": "Walk",
 	"leg.headsign": "→ {name}",
+	"leg.depart_at": "depart {time}",
+	"leg.depart_in_min": "in {minutes} min",
 	"leg.duration_min": "{minutes} min",
 	"leg.walk_meters": "~{meters} m",
 	"multi.leg_label": "Leg {n}: {from} → {to}",
