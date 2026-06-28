@@ -103,6 +103,17 @@ body,
   box-shadow: 0 2px 8px rgba(10, 108, 255, 0.18);
 }
 
+.route-card__live-banner {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .route-card__header {
   display: flex;
   align-items: center;
@@ -410,6 +421,12 @@ body,
 .app--dark .route-card--active {
   border-color: #6aa2ff;
   box-shadow: 0 2px 10px rgba(106, 162, 255, 0.22);
+}
+
+.app--dark .route-card__live-banner {
+  background: #3b2a09;
+  color: #fde68a;
+  border-color: #b45309;
 }
 
 .app--dark .route-card__header,

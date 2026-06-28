@@ -36,6 +36,27 @@ describe("secondsUntilDeparture", () => {
 });
 
 describe("RouteCard", () => {
+	it("renders a live delay banner when delay is at least one minute", () => {
+		const html = renderToStaticMarkup(
+			<RouteCard
+				option={{ ...optionWithLeg("rail", 13 * 3600), live: { delaySec: 300 } }}
+				rank={1}
+				t={makeT("ja")}
+			/>,
+		);
+
+		expect(html).toContain("route-card__live-banner");
+		expect(html).toContain("5 分の遅延");
+	});
+
+	it("does not render a live banner when live data is missing", () => {
+		const html = renderToStaticMarkup(
+			<RouteCard option={optionWithLeg("rail", 13 * 3600)} rank={1} t={makeT("ja")} />,
+		);
+
+		expect(html).not.toContain("route-card__live-banner");
+	});
+
 	it("renders transit departure time with an inline countdown", () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-06-28T04:42:00.000Z"));

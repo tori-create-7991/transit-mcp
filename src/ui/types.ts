@@ -52,6 +52,11 @@ export type PlanOptionUi = {
 	fareIcYen?: number;
 	legs: PlanLegUi[];
 	map?: PlanMapData;
+	live?: {
+		delaySec?: number;
+		disruptions?: string[];
+		updatedAt?: string;
+	};
 };
 
 export type PlanLegGroupUi = {

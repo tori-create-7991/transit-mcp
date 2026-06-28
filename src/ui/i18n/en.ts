@@ -20,6 +20,8 @@ export const en: Dict = {
 	"route.show_detail": "Show details",
 	"route.hide_detail": "Hide",
 	"route.leg_count": "{count} legs",
+	"live.delay_min": "{minutes} min delay",
+	"live.disruption": "Service alert",
 	"leg.platform": "Platform",
 	"leg.walk": "Walk",
 	"leg.headsign": "→ {name}",

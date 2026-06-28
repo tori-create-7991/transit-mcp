@@ -91,6 +91,21 @@ export function RouteCard(props: {
 	} = props;
 	const [expanded, setExpanded] = useState(defaultExpanded ?? false);
 	const minutes = Math.round(option.durationSec / 60);
+	const liveDelaySec = option.live?.delaySec ?? 0;
+	const liveDisruptions = option.live?.disruptions ?? [];
+	const liveBanner =
+		option.live && liveDelaySec >= 60 ? (
+			<div className="route-card__live-banner" role="status">
+				⚠️{" "}
+				{t("live.delay_min", {
+					minutes: Math.round(liveDelaySec / 60),
+				})}
+			</div>
+		) : liveDisruptions.length > 0 ? (
+			<div className="route-card__live-banner" role="status">
+				⚠️ {t("live.disruption")}: {liveDisruptions[0]}
+			</div>
+		) : null;
 	return (
 		<article
 			className={`route-card${active ? " route-card--active" : ""}`}
@@ -106,6 +121,7 @@ export function RouteCard(props: {
 			role={onSelect ? "button" : undefined}
 			aria-pressed={onSelect ? active : undefined}
 		>
+			{liveBanner}
 			<header className="route-card__header">
 				<span className="route-card__rank">#{rank}</span>
 				<dl className="route-card__metrics">

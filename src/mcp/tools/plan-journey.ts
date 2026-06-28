@@ -108,6 +108,11 @@ export type PlanOption = {
 	fareIcYen?: number;
 	legs: PlanLeg[];
 	map?: PlanMapData;
+	live?: {
+		delaySec?: number;
+		disruptions?: string[];
+		updatedAt?: string;
+	};
 };
 
 export const PLAN_JOURNEY_NAME = "plan_journey";
@@ -460,6 +465,30 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 				transfers: j.transferCount,
 				legs,
 			};
+			const rawLive = (j as any).live ?? (j as any).realtime ?? undefined;
+			if (rawLive && typeof rawLive === "object") {
+				const live: {
+					delaySec?: number;
+					disruptions?: string[];
+					updatedAt?: string;
+				} = {};
+				if (typeof rawLive.delaySecs === "number") {
+					live.delaySec = rawLive.delaySecs;
+				} else if (typeof rawLive.delaySec === "number") {
+					live.delaySec = rawLive.delaySec;
+				}
+				if (Array.isArray(rawLive.disruptions)) {
+					live.disruptions = rawLive.disruptions
+						.map((d: any) =>
+							typeof d === "string" ? d : (d?.message ?? d?.text),
+						)
+						.filter((s: unknown): s is string => typeof s === "string");
+				}
+				if (typeof rawLive.updatedAt === "string") {
+					live.updatedAt = rawLive.updatedAt;
+				}
+				if (Object.keys(live).length > 0) opt.live = live;
+			}
 			if (j.fare?.ticket !== undefined) opt.fareYen = j.fare.ticket;
 			if (j.fare?.ic !== undefined) opt.fareIcYen = j.fare.ic;
 			if (o.map) {

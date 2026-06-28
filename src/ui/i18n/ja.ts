@@ -22,6 +22,8 @@ export type Dict = {
 	"route.show_detail": string;
 	"route.hide_detail": string;
 	"route.leg_count": string;
+	"live.delay_min": string;
+	"live.disruption": string;
 	"leg.platform": string;
 	"leg.walk": string;
 	"leg.headsign": string;
@@ -58,6 +60,8 @@ export const ja: Dict = {
 	"route.show_detail": "詳細を表示",
 	"route.hide_detail": "閉じる",
 	"route.leg_count": "{count} 区間",
+	"live.delay_min": "{minutes} 分の遅延",
+	"live.disruption": "運行情報あり",
 	"leg.platform": "ホーム",
 	"leg.walk": "徒歩",
 	"leg.headsign": "{name} 行",
