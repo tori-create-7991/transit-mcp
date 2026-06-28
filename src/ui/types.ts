@@ -30,6 +30,7 @@ export type PlanMapPoint = {
 export type PlanMapSegment = {
 	kind: string;
 	polyline: { lat: number; lon: number }[];
+	color?: string;
 };
 
 export type PlanMapBounds = {

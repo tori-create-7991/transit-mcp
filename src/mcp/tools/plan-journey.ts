@@ -84,6 +84,7 @@ export type PlanMapPoint = {
 export type PlanMapSegment = {
 	kind: string;
 	polyline: { lat: number; lon: number }[];
+	color?: string;
 };
 
 export type PlanMapBounds = {
@@ -508,10 +509,17 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 						}
 						return pt;
 					});
-				const segments: PlanMapSegment[] = (o.map.segments ?? []).map((s) => ({
-					kind: s.kind,
-					polyline: (s.polyline ?? []).map((p) => ({ lat: p.lat, lon: p.lon })),
-				}));
+				const segments: PlanMapSegment[] = (o.map.segments ?? []).map((s, i) => {
+					const seg: PlanMapSegment = {
+						kind: s.kind,
+						polyline: (s.polyline ?? []).map((p) => ({ lat: p.lat, lon: p.lon })),
+					};
+					const leg = legs[i];
+					if (leg && s.kind !== "walk" && leg.color) {
+						seg.color = leg.color;
+					}
+					return seg;
+				});
 				opt.map = { points, segments };
 				const b = o.map.bounds;
 				if (b && typeof b.minLat === "number") {

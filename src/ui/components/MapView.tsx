@@ -3,7 +3,7 @@
  *
  * When `map` is provided, polylines (one per planner segment) are added
  * as a GeoJSON source and the view is fit to the bounds. Transit
- * segments get a solid blue line; walks render as a dashed gray line.
+ * segments use route colors when available; walks render as a dashed gray line.
  * Origin / destination / transfer points are placed as small markers.
  *
  * `focusBounds` (optional) animates the camera to that bbox without
@@ -79,16 +79,23 @@ export function MapView(props: {
 
 				const transitFeatures = map.segments
 					.filter((s) => s.kind !== "walk" && s.polyline.length >= 2)
-					.map((s) => ({
-						type: "Feature" as const,
-						geometry: {
-							type: "LineString" as const,
-							coordinates: s.polyline.map(
-								(p) => [p.lon, p.lat] as [number, number],
-							),
-						},
-						properties: { kind: s.kind },
-					}));
+					.map((s) => {
+						const color = s.color
+							? s.color.startsWith("#")
+								? s.color
+								: `#${s.color}`
+							: null;
+						return {
+							type: "Feature" as const,
+							geometry: {
+								type: "LineString" as const,
+								coordinates: s.polyline.map(
+									(p) => [p.lon, p.lat] as [number, number],
+								),
+							},
+							properties: color ? { kind: s.kind, color } : { kind: s.kind },
+						};
+					});
 				const walkFeatures = map.segments
 					.filter((s) => s.kind === "walk" && s.polyline.length >= 2)
 					.map((s) => ({
@@ -111,7 +118,10 @@ export function MapView(props: {
 						id: "route-transit-line",
 						type: "line",
 						source: "route-transit",
-						paint: { "line-color": "#0a6cff", "line-width": 5 },
+						paint: {
+							"line-color": ["case", ["has", "color"], ["get", "color"], "#0a6cff"],
+							"line-width": 5,
+						},
 						layout: { "line-cap": "round", "line-join": "round" },
 					});
 				}
