@@ -16,6 +16,7 @@ import { Attribution } from "./components/Attribution.js";
 import { LangToggle } from "./components/LangToggle.js";
 import { LegPicker } from "./components/LegPicker.js";
 import { MapView } from "./components/MapView.js";
+import { RouteCompareTable } from "./components/RouteCompareTable.js";
 import { RouteCard } from "./components/RouteCard.js";
 import { detectLang, makeT, persistLang, type UiLang } from "./i18n/index.js";
 import type {
@@ -252,6 +253,7 @@ function SingleLegApp(props: {
 	const hasData = options.length > 0;
 
 	const [selectedIdx, setSelectedIdx] = useState(0);
+	const [compareMode, setCompareMode] = useState(false);
 	const safeIdx = Math.min(selectedIdx, Math.max(options.length - 1, 0));
 	const selectedMap = options[safeIdx]?.map;
 	const [focusedLeg, setFocusedLeg] = useState<number | null>(null);
@@ -269,36 +271,63 @@ function SingleLegApp(props: {
 	return (
 		<>
 			<LangToggle lang={lang} onChange={onLang} t={t} />
-			<ol className="app__routes" aria-label={t("app.title")}>
-				{hasData ? (
-					options.map((opt, idx) => (
-						<RouteCard
-							// biome-ignore lint/suspicious/noArrayIndexKey: routes are ordered & stable per payload
-							key={idx}
-							option={opt}
-							rank={idx + 1}
-							t={t}
-							active={idx === safeIdx}
-							onSelect={() => handleSelectOption(idx)}
-							focusedLegIdx={
-								idx === safeIdx ? (focusedLeg ?? undefined) : undefined
-							}
-							onLegFocus={idx === safeIdx ? setFocusedLeg : undefined}
-						/>
-					))
-				) : (
-					<li className="empty-state">{t("error.no_data")}</li>
-				)}
-				{focusedLeg !== null ? (
-					<button
-						type="button"
-						className="app__reset-zoom"
-						onClick={() => setFocusedLeg(null)}
-					>
-						{t("map.reset_zoom")}
-					</button>
-				) : null}
-			</ol>
+			<button
+				type="button"
+				className="app__compare-toggle"
+				onClick={() => setCompareMode((v) => !v)}
+			>
+				{compareMode ? t("compare.to_cards") : t("compare.to_table")}
+			</button>
+			{hasData && compareMode ? (
+				<div className="app__routes app__routes--compare">
+					<RouteCompareTable
+						options={options}
+						activeIdx={safeIdx}
+						onSelect={handleSelectOption}
+						t={t}
+					/>
+					{focusedLeg !== null ? (
+						<button
+							type="button"
+							className="app__reset-zoom"
+							onClick={() => setFocusedLeg(null)}
+						>
+							{t("map.reset_zoom")}
+						</button>
+					) : null}
+				</div>
+			) : (
+				<ol className="app__routes" aria-label={t("app.title")}>
+					{hasData ? (
+						options.map((opt, idx) => (
+							<RouteCard
+								// biome-ignore lint/suspicious/noArrayIndexKey: routes are ordered & stable per payload
+								key={idx}
+								option={opt}
+								rank={idx + 1}
+								t={t}
+								active={idx === safeIdx}
+								onSelect={() => handleSelectOption(idx)}
+								focusedLegIdx={
+									idx === safeIdx ? (focusedLeg ?? undefined) : undefined
+								}
+								onLegFocus={idx === safeIdx ? setFocusedLeg : undefined}
+							/>
+						))
+					) : (
+						<li className="empty-state">{t("error.no_data")}</li>
+					)}
+					{focusedLeg !== null ? (
+						<button
+							type="button"
+							className="app__reset-zoom"
+							onClick={() => setFocusedLeg(null)}
+						>
+							{t("map.reset_zoom")}
+						</button>
+					) : null}
+				</ol>
+			)}
 			<div className="app__map">
 				{selectedMap ? (
 					focusBounds ? (

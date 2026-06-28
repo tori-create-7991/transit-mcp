@@ -82,6 +82,21 @@ body,
   color: #fff;
 }
 
+.app__compare-toggle {
+  position: fixed;
+  top: 12px;
+  right: 150px;
+  z-index: 10;
+  background: transparent;
+  border: 1px solid #d1d5db;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  margin: 4px 8px;
+  min-height: 28px;
+}
+
 .route-card {
   background: #fff;
   border-radius: 12px;
@@ -222,6 +237,41 @@ body,
 
 .app__routes--multi {
   padding-top: 56px;
+}
+
+.app__routes--compare {
+  margin: 0;
+}
+
+.route-compare {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #fff;
+}
+
+.route-compare th,
+.route-compare td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.route-compare__row {
+  cursor: pointer;
+}
+
+.route-compare__row:hover {
+  background: #f3f4f6;
+}
+
+.route-compare__row:focus-visible {
+  outline: 2px solid #0a6cff;
+  outline-offset: -2px;
+}
+
+.route-compare__row--active {
+  background: #dbeafe;
 }
 
 .leg-picker {
@@ -443,6 +493,7 @@ body,
 
 .app--dark .route-card__rank,
 .app--dark .route-card__toggle,
+.app--dark .app__compare-toggle,
 .app--dark .app__reset-zoom,
 .app--dark .attribution__toggle {
   color: #8ab6ff;
@@ -467,6 +518,7 @@ body,
 
 .app--dark .route-card__toggle,
 .app--dark .leg-picker__chip,
+.app--dark .app__compare-toggle,
 .app--dark .app__reset-zoom,
 .app--dark .attribution__toggle {
   background: #162039;
@@ -475,6 +527,7 @@ body,
 
 .app--dark .route-card__toggle:hover,
 .app--dark .route-card__leg--clickable:hover,
+.app--dark .app__compare-toggle:hover,
 .app--dark .app__reset-zoom:hover,
 .app--dark .attribution__toggle:hover {
   background: #223057;
@@ -486,10 +539,24 @@ body,
 }
 
 .app--dark .leg-picker,
+.app--dark .route-compare,
 .app--dark .lang-toggle {
   background: #1b2440;
   color: #e8edf7;
   border-color: #2a3450;
+}
+
+.app--dark .route-compare th,
+.app--dark .route-compare td {
+  border-color: #2a3450;
+}
+
+.app--dark .route-compare__row:hover {
+  background: #223057;
+}
+
+.app--dark .route-compare__row--active {
+  background: #21386a;
 }
 
 .app--dark .leg-picker__chip {

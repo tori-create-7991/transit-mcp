@@ -39,6 +39,9 @@ export type Dict = {
 	"multi.leg_label": string;
 	"multi.pick_option": string;
 	"multi.total": string;
+	"compare.to_table": string;
+	"compare.to_cards": string;
+	"compare.lines": string;
 	"lang.toggle.ja": string;
 	"lang.toggle.en": string;
 	"attribution.data": string;
@@ -82,6 +85,9 @@ export const ja: Dict = {
 	"multi.leg_label": "区間 {n}: {from} → {to}",
 	"multi.pick_option": "ルートを選択",
 	"multi.total": "合計",
+	"compare.to_table": "📋 比較表",
+	"compare.to_cards": "📑 カード表示",
+	"compare.lines": "主要路線",
 	"lang.toggle.ja": "日本語",
 	"lang.toggle.en": "English",
 	"attribution.data": "データ",
