@@ -1,5 +1,5 @@
 /**
- * `renderUiHtml(data, attribution, mapStyleUrl, lang)` returns the iframe
+ * `renderUiHtml(data, attribution, mapStyleUrl, mapStyleUrlDark, lang)` returns the iframe
  * HTML by substituting the bootstrap payload into the pre-built
  * `src/ui/dist/plan.html` template (produced by `pnpm build:ui`).
  *
@@ -33,12 +33,14 @@ export function renderUiHtml(
 	data: PlanData,
 	attribution: AttributionData,
 	mapStyleUrl: string,
+	mapStyleUrlDark: string,
 	lang: "ja" | "en",
 ): string {
 	const boot: IframeBootstrap = {
 		plan: data,
 		attribution,
 		mapStyleUrl,
+		mapStyleUrlDark,
 		lang,
 	};
 	const json = JSON.stringify(boot).replace(/<\//g, "<\\/");

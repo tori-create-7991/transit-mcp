@@ -7,5 +7,6 @@ export type Env = {
 	UI_CACHE: KVNamespace;
 	TRANSIT_API_BASE: string;
 	MAP_STYLE_URL: string;
+	MAP_STYLE_URL_DARK: string;
 	DEFAULT_LANG: "ja" | "en";
 };

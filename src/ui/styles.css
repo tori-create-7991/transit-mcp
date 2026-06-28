@@ -386,3 +386,103 @@ body,
   height: 100%;
   color: #777;
 }
+
+.app--dark {
+  background: #0f1422;
+  color: #e8edf7;
+}
+
+.app--dark .app__routes,
+.app--dark .route-card {
+  background: #1b2440;
+  color: #e8edf7;
+  border-color: #2a3450;
+}
+
+.app--dark .route-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.app--dark .route-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
+}
+
+.app--dark .route-card--active {
+  border-color: #6aa2ff;
+  box-shadow: 0 2px 10px rgba(106, 162, 255, 0.22);
+}
+
+.app--dark .route-card__header,
+.app--dark .route-card__detail {
+  border-color: #2a3450;
+}
+
+.app--dark .route-card__rank,
+.app--dark .route-card__toggle,
+.app--dark .app__reset-zoom,
+.app--dark .attribution__toggle {
+  color: #8ab6ff;
+}
+
+.app--dark .route-card__metrics dt,
+.app--dark .route-card__leg-headsign,
+.app--dark .route-card__leg-walk,
+.app--dark .route-card__detail,
+.app--dark .route-card__detail dt,
+.app--dark .route-card__fare-ic,
+.app--dark .route-card__leg-od,
+.app--dark .route-card__leg-time,
+.app--dark .leg-picker__row-label,
+.app--dark .leg-picker__row-note,
+.app--dark .attribution,
+.app--dark .attribution__details,
+.app--dark .empty-state {
+  color: #b8c2d8;
+}
+
+.app--dark .route-card__toggle,
+.app--dark .leg-picker__chip,
+.app--dark .app__reset-zoom,
+.app--dark .attribution__toggle {
+  background: #162039;
+  border-color: #3a4770;
+}
+
+.app--dark .route-card__toggle:hover,
+.app--dark .route-card__leg--clickable:hover,
+.app--dark .app__reset-zoom:hover,
+.app--dark .attribution__toggle:hover {
+  background: #223057;
+}
+
+.app--dark .route-card__leg--focused {
+  background: #21386a;
+  box-shadow: inset 2px 0 0 #6aa2ff;
+}
+
+.app--dark .leg-picker,
+.app--dark .lang-toggle {
+  background: #1b2440;
+  color: #e8edf7;
+  border-color: #2a3450;
+}
+
+.app--dark .leg-picker__chip {
+  color: #e8edf7;
+}
+
+.app--dark .leg-picker__chip--active,
+.app--dark .lang-toggle__btn.is-active {
+  background: #2f6fe4;
+  border-color: #2f6fe4;
+  color: #fff;
+}
+
+.app--dark .attribution {
+  background: #121a2d;
+  border-color: #2a3450;
+}
+
+.app--dark .attribution__details {
+  border-color: #3a4770;
+}

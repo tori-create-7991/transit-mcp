@@ -80,5 +80,6 @@ export type IframeBootstrap = {
 	plan: PlanData;
 	attribution: AttributionData;
 	mapStyleUrl: string;
+	mapStyleUrlDark?: string;
 	lang: "ja" | "en";
 };

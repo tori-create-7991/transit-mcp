@@ -10,7 +10,7 @@
  *    swaps an option for a leg.
  */
 
-import { type ReactElement, useMemo, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Attribution } from "./components/Attribution.js";
 import { LangToggle } from "./components/LangToggle.js";
@@ -101,8 +101,32 @@ function combineSelectedOptions(
 	return combined;
 }
 
+type UiTheme = "light" | "dark";
+
+function normalizeTheme(theme: string | undefined): UiTheme | undefined {
+	if (theme === "dark") return "dark";
+	if (theme === "light") return "light";
+	return undefined;
+}
+
+function queryTheme(): UiTheme | undefined {
+	if (typeof window === "undefined") return undefined;
+	const theme = new URLSearchParams(window.location.search).get("theme");
+	return normalizeTheme(theme ?? undefined);
+}
+
+function bridgeTheme(): UiTheme | undefined {
+	const context = bridgeApp?.getHostContext?.() as
+		| { theme?: string }
+		| undefined;
+	return normalizeTheme(context?.theme);
+}
+
 function App(props: { boot: IframeBootstrap }): ReactElement {
 	const { boot } = props;
+	const [dark, setDark] = useState<UiTheme>(
+		() => queryTheme() ?? bridgeTheme() ?? "light",
+	);
 	const [lang, setLang] = useState<UiLang>(() => {
 		const detected = detectLang();
 		if (typeof window !== "undefined") {
@@ -117,6 +141,26 @@ function App(props: { boot: IframeBootstrap }): ReactElement {
 	});
 	const t = useMemo(() => makeT(lang), [lang]);
 
+	useEffect(() => {
+		const initial = queryTheme() ?? bridgeTheme();
+		if (initial) setDark(initial);
+
+		const onHostContextChanged = (event: CustomEvent<{ theme?: string }>) => {
+			const next = normalizeTheme(event.detail?.theme);
+			if (next) setDark(next);
+		};
+		window.addEventListener(
+			"host:context-changed",
+			onHostContextChanged as EventListener,
+		);
+		return () => {
+			window.removeEventListener(
+				"host:context-changed",
+				onHostContextChanged as EventListener,
+			);
+		};
+	}, []);
+
 	const onLang = (next: UiLang) => {
 		setLang(next);
 		persistLang(next);
@@ -127,17 +171,43 @@ function App(props: { boot: IframeBootstrap }): ReactElement {
 
 	if (isMulti) {
 		return (
-			<MultiLegApp
+			<div className={`app${dark === "dark" ? " app--dark" : ""}`}>
+				<MultiLegApp
+					boot={boot}
+					lang={lang}
+					onLang={onLang}
+					t={t}
+					groups={legGroups}
+					darkMode={dark === "dark"}
+				/>
+			</div>
+		);
+	}
+
+	return (
+		<div className={`app${dark === "dark" ? " app--dark" : ""}`}>
+			<SingleLegApp
 				boot={boot}
 				lang={lang}
 				onLang={onLang}
 				t={t}
-				groups={legGroups}
+				darkMode={dark === "dark"}
 			/>
-		);
-	}
+		</div>
+	);
+}
 
-	return <SingleLegApp boot={boot} lang={lang} onLang={onLang} t={t} />;
+function mapViewProps(boot: IframeBootstrap, darkMode: boolean) {
+	const props: {
+		mapStyleUrl: string;
+		mapStyleUrlDark?: string;
+		darkMode: boolean;
+	} = {
+		mapStyleUrl: boot.mapStyleUrl,
+		darkMode,
+	};
+	if (boot.mapStyleUrlDark) props.mapStyleUrlDark = boot.mapStyleUrlDark;
+	return props;
 }
 
 function boundsForLeg(
@@ -175,8 +245,9 @@ function SingleLegApp(props: {
 	lang: UiLang;
 	onLang: (l: UiLang) => void;
 	t: ReturnType<typeof makeT>;
+	darkMode: boolean;
 }): ReactElement {
-	const { boot, lang, onLang, t } = props;
+	const { boot, lang, onLang, t, darkMode } = props;
 	const options = boot.plan.options ?? [];
 	const hasData = options.length > 0;
 
@@ -196,7 +267,7 @@ function SingleLegApp(props: {
 	};
 
 	return (
-		<div className="app">
+		<>
 			<LangToggle lang={lang} onChange={onLang} t={t} />
 			<ol className="app__routes" aria-label={t("app.title")}>
 				{hasData ? (
@@ -232,15 +303,15 @@ function SingleLegApp(props: {
 				{selectedMap ? (
 					focusBounds ? (
 						<MapView
-							mapStyleUrl={boot.mapStyleUrl}
+							{...mapViewProps(boot, darkMode)}
 							map={selectedMap}
 							focusBounds={focusBounds}
 						/>
 					) : (
-						<MapView mapStyleUrl={boot.mapStyleUrl} map={selectedMap} />
+						<MapView {...mapViewProps(boot, darkMode)} map={selectedMap} />
 					)
 				) : (
-					<MapView mapStyleUrl={boot.mapStyleUrl} />
+					<MapView {...mapViewProps(boot, darkMode)} />
 				)}
 			</div>
 			<Attribution
@@ -249,7 +320,7 @@ function SingleLegApp(props: {
 				mapAttribution={boot.attribution.mapAttribution}
 				t={t}
 			/>
-		</div>
+		</>
 	);
 }
 
@@ -259,8 +330,9 @@ function MultiLegApp(props: {
 	onLang: (l: UiLang) => void;
 	t: ReturnType<typeof makeT>;
 	groups: NonNullable<IframeBootstrap["plan"]["legGroups"]>;
+	darkMode: boolean;
 }): ReactElement {
-	const { boot, lang, onLang, t, groups } = props;
+	const { boot, lang, onLang, t, groups, darkMode } = props;
 	const defaults = boot.plan.defaultIndices ?? groups.map(() => 0);
 	const [indices, setIndices] = useState<number[]>(defaults);
 
@@ -286,7 +358,7 @@ function MultiLegApp(props: {
 	};
 
 	return (
-		<div className="app">
+		<>
 			<LangToggle lang={lang} onChange={onLang} t={t} />
 			<div className="app__routes app__routes--multi">
 				<RouteCard
@@ -318,15 +390,15 @@ function MultiLegApp(props: {
 				{combinedMap ? (
 					focusBounds ? (
 						<MapView
-							mapStyleUrl={boot.mapStyleUrl}
+							{...mapViewProps(boot, darkMode)}
 							map={combinedMap}
 							focusBounds={focusBounds}
 						/>
 					) : (
-						<MapView mapStyleUrl={boot.mapStyleUrl} map={combinedMap} />
+						<MapView {...mapViewProps(boot, darkMode)} map={combinedMap} />
 					)
 				) : (
-					<MapView mapStyleUrl={boot.mapStyleUrl} />
+					<MapView {...mapViewProps(boot, darkMode)} />
 				)}
 			</div>
 			<Attribution
@@ -335,7 +407,7 @@ function MultiLegApp(props: {
 				mapAttribution={boot.attribution.mapAttribution}
 				t={t}
 			/>
-		</div>
+		</>
 	);
 }
 
@@ -357,6 +429,8 @@ import {
 } from "@modelcontextprotocol/ext-apps/app-with-deps";
 
 const DEFAULT_MAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
+const DEFAULT_MAP_STYLE_DARK = "https://tiles.openfreemap.org/styles/dark-matter";
+let bridgeApp: McpApp | undefined;
 
 function extractPlanFromResult(result: unknown): PlanData | undefined {
 	if (!result || typeof result !== "object") return undefined;
@@ -383,6 +457,7 @@ function bridgeBoot(
 				'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://openfreemap.org">OpenFreeMap</a>',
 		},
 		mapStyleUrl: DEFAULT_MAP_STYLE,
+		mapStyleUrlDark: DEFAULT_MAP_STYLE_DARK,
 		lang,
 	};
 }
@@ -398,6 +473,7 @@ async function connectAppBridge(
 			// We don't expose any in-iframe tools; the host owns the server.
 			{},
 		);
+		bridgeApp = app;
 		const onResult = (params: unknown) => {
 			const plan = extractPlanFromResult(params);
 			if (plan) {

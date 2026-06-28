@@ -28,10 +28,14 @@ type MapLibreMap = {
 
 export function MapView(props: {
 	mapStyleUrl: string;
+	mapStyleUrlDark?: string;
+	darkMode?: boolean;
 	map?: PlanMapData;
 	focusBounds?: PlanMapBounds;
 }): ReactElement {
-	const { mapStyleUrl, map, focusBounds } = props;
+	const { mapStyleUrl, mapStyleUrlDark, darkMode, map, focusBounds } = props;
+	const effectiveStyle =
+		darkMode && mapStyleUrlDark ? mapStyleUrlDark : mapStyleUrl;
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const mapRef = useRef<MapLibreMap | null>(null);
 	const loadedRef = useRef(false);
@@ -44,7 +48,7 @@ export function MapView(props: {
 			const Map = mlib.Map;
 			const m = new Map({
 				container: containerRef.current,
-				style: mapStyleUrl,
+				style: effectiveStyle,
 				center: [139.7671, 35.6812],
 				zoom: 10,
 				attributionControl: false,
@@ -155,7 +159,7 @@ export function MapView(props: {
 		// Intentionally exclude `focusBounds` from deps: focus changes are
 		// handled by the second effect below without re-mounting the map.
 		// biome-ignore lint/correctness/useExhaustiveDependencies: handled in separate effect
-	}, [mapStyleUrl, map]);
+	}, [effectiveStyle, map, darkMode]);
 
 	// Animate camera to focusBounds (or back to overall bounds) without
 	// re-creating the map. Runs after the load handler has populated layers.

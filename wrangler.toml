@@ -9,6 +9,7 @@ enabled = true
 [vars]
 TRANSIT_API_BASE = "https://api.transit.ls8h.com"
 MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/positron"
+MAP_STYLE_URL_DARK = "https://tiles.openfreemap.org/styles/dark-matter"
 DEFAULT_LANG = "ja"
 
 [[kv_namespaces]]

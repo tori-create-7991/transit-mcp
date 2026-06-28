@@ -120,7 +120,13 @@ app.get("/ui/plan", async (c) => {
 	}
 
 	const attribution = await getAttributions(c.env);
-	const html = renderUiHtml(plan, attribution, c.env.MAP_STYLE_URL, lang);
+	const html = renderUiHtml(
+		plan,
+		attribution,
+		c.env.MAP_STYLE_URL,
+		c.env.MAP_STYLE_URL_DARK,
+		lang,
+	);
 	c.header("Content-Type", "text/html; charset=utf-8");
 	// Data is inlined in the URL / KV — safe to allow short edge cache.
 	c.header("Cache-Control", "public, max-age=3600");

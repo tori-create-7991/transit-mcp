@@ -12,6 +12,7 @@ function makeEnv(kv: KvLike): Env {
 		UI_CACHE: kv as unknown as KVNamespace,
 		TRANSIT_API_BASE: "https://api.example.test",
 		MAP_STYLE_URL: "https://tiles.example.test/style.json",
+		MAP_STYLE_URL_DARK: "https://tiles.example.test/dark-style.json",
 		DEFAULT_LANG: "ja",
 	};
 }
