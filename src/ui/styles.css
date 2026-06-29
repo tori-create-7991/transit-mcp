@@ -591,24 +591,27 @@ body,
     min-height: 100vh;
   }
 
-  .app__routes {
-    padding: 56px 8px 8px;
-    max-height: 50vh;
-  }
-
+  .app__routes,
   .app__routes--multi,
   .app__routes--compare {
-    max-height: none;
+    /* Always bound the card list in narrow viewports so the map below
+       stays visible. Multi-leg / compare modes can be quite tall; let
+       them scroll inside their region instead of pushing the map off
+       screen. */
+    padding: 56px 8px 8px;
+    max-height: 45vh;
+    overflow-y: auto;
   }
 
   .map-view {
     /* grid item takes care of sizing; relax absolute fill */
     position: relative;
-    height: 50vh;
+    height: 45vh;
   }
 
   .app__map {
-    height: 50vh;
+    height: 45vh;
+    min-height: 280px;
   }
 
   .lang-toggle {

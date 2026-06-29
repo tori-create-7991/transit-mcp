@@ -322,6 +322,89 @@ function extractOperatorId(id: string): string | undefined {
 	return parts[0];
 }
 
+type StationCandidate = {
+	id: string;
+	name?: string;
+	feedId?: string;
+	weight?: number;
+	lat?: number;
+	lon?: number;
+};
+
+const MAJOR_RAIL_FEED_HINTS = [
+	"jreast",
+	"jrcentral",
+	"jrwest",
+	"jrhokkaido",
+	"jrkyushu",
+	"jrshikoku",
+	"tokyometro",
+	"metro",
+	"toei",
+	"odakyu",
+	"keio",
+	"tokyu",
+	"keisei",
+	"keikyu",
+	"seibu",
+	"tobu",
+	"nankai",
+	"hankyu",
+	"hanshin",
+	"meitetsu",
+	"kintetsu",
+];
+
+/**
+ * Score a station candidate so we can pick a sensible default from the
+ * API's `locations/suggest` results. Higher = better. Without this,
+ * "鳥取" matches "南海 鳥取ノ荘" before JR-West 鳥取 because the API
+ * orders by its own weight which conflates fame with relevance.
+ */
+function scoreCandidate(c: StationCandidate, normalizedQuery: string): number {
+	let score = 0;
+	const name = (c.name ?? "").trim();
+	if (name === normalizedQuery || name === `${normalizedQuery}駅`) score += 200;
+	else if (name.startsWith(normalizedQuery)) score += 60;
+	else if (name.includes(normalizedQuery)) score += 20;
+	// Penalise feeds whose name extends the query — "鳥取ノ荘", "新長野",
+	// "東京競馬場前" etc. when the user asked for the shorter version.
+	if (
+		name &&
+		name !== normalizedQuery &&
+		name !== `${normalizedQuery}駅` &&
+		name.startsWith(normalizedQuery) &&
+		name.length > normalizedQuery.length + 1
+	) {
+		score -= 30;
+	}
+	const feed = (c.feedId ?? "").toLowerCase();
+	if (MAJOR_RAIL_FEED_HINTS.some((h) => feed.includes(h))) score += 40;
+	if (feed.startsWith("scrape-jr")) score += 20;
+	if (feed.startsWith("osm")) score -= 30;
+	if (typeof c.weight === "number") score += c.weight / 5;
+	return score;
+}
+
+function pickBestStation(
+	stations: StationCandidate[],
+	value: string,
+): StationCandidate | undefined {
+	if (stations.length === 0) return undefined;
+	const query = value.replace(/駅$/, "").trim();
+	let best = stations[0]!;
+	let bestScore = scoreCandidate(best, query);
+	for (let i = 1; i < stations.length; i++) {
+		const s = stations[i]!;
+		const sc = scoreCandidate(s, query);
+		if (sc > bestScore) {
+			best = s;
+			bestScore = sc;
+		}
+	}
+	return best;
+}
+
 async function resolveEndpoint(
 	client: TransitClient,
 	value: string,
@@ -335,10 +418,15 @@ async function resolveEndpoint(
 	// Falling back to `geo:lat,lon` lets the planner pick the nearest station
 	// in the correct feed graph automatically.
 	if (preferGeo) {
+		// Pull a wider candidate set so we can prefer a real rail feed
+		// over OSM nodes and obscure bus stops with the same prefix.
 		const loc = await client.GET("/api/v1/locations/suggest", {
-			params: { query: { q: value, limit: 1 } },
+			params: { query: { q: value, limit: 10 } },
 		});
-		const station = loc.data?.stations?.[0];
+		const station = pickBestStation(
+			(loc.data?.stations ?? []) as StationCandidate[],
+			value,
+		);
 		if (
 			station &&
 			typeof station.lat === "number" &&
@@ -348,25 +436,30 @@ async function resolveEndpoint(
 		}
 	}
 	const { data, error, response } = await client.GET("/api/v1/places/suggest", {
-		params: { query: { q: value, limit: 5 } },
+		params: { query: { q: value, limit: 10 } },
 	});
 	if (error || !data) {
 		throw mapUpstreamError(response?.status, lang, "error_place_not_found");
 	}
 	const candidates = data.places ?? [];
 	if (preferGeo) {
-		const candidate = candidates.find(
-			(p) => typeof p.lat === "number" && typeof p.lon === "number",
-		);
-		if (candidate?.lat !== undefined && candidate.lon !== undefined) {
-			return `geo:${candidate.lat},${candidate.lon}`;
+		const ranked = pickBestStation(candidates as StationCandidate[], value) as
+			| (StationCandidate & { lat?: number; lon?: number })
+			| undefined;
+		if (ranked?.lat !== undefined && ranked.lon !== undefined) {
+			return `geo:${ranked.lat},${ranked.lon}`;
 		}
 	}
-	const top = candidates[0];
+	const top =
+		pickBestStation(candidates as StationCandidate[], value) ??
+		(candidates[0] as StationCandidate | undefined);
 	if (!top) {
 		throw mapUpstreamError(404, lang, "error_place_not_found");
 	}
-	return top.endpoint ?? top.id;
+	const original = candidates.find(
+		(p) => (p as StationCandidate).id === top.id,
+	);
+	return (original as { endpoint?: string; id: string }).endpoint ?? top.id;
 }
 
 export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
@@ -509,17 +602,22 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 						}
 						return pt;
 					});
-				const segments: PlanMapSegment[] = (o.map.segments ?? []).map((s, i) => {
-					const seg: PlanMapSegment = {
-						kind: s.kind,
-						polyline: (s.polyline ?? []).map((p) => ({ lat: p.lat, lon: p.lon })),
-					};
-					const leg = legs[i];
-					if (leg && s.kind !== "walk" && leg.color) {
-						seg.color = leg.color;
-					}
-					return seg;
-				});
+				const segments: PlanMapSegment[] = (o.map.segments ?? []).map(
+					(s, i) => {
+						const seg: PlanMapSegment = {
+							kind: s.kind,
+							polyline: (s.polyline ?? []).map((p) => ({
+								lat: p.lat,
+								lon: p.lon,
+							})),
+						};
+						const leg = legs[i];
+						if (leg && s.kind !== "walk" && leg.color) {
+							seg.color = leg.color;
+						}
+						return seg;
+					},
+				);
 				opt.map = { points, segments };
 				const b = o.map.bounds;
 				if (b && typeof b.minLat === "number") {
@@ -534,8 +632,21 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 			return opt;
 		});
 
+		// Detect "no transit found" — every option is walk-only AND the
+		// trip is longer than 60 min. This usually means the Transit API's
+		// feed graph doesn't connect the two endpoints (cross-region with
+		// missing inter-feed transfers). Flag it in the summary so the
+		// caller doesn't act on a misleading "fastest route" answer.
+		const hasAnyRail = options.some((o) =>
+			o.legs.some((l) => l.mode !== "walk"),
+		);
+		const allWalkLong =
+			options.length > 0 &&
+			!hasAnyRail &&
+			options.every((o) => o.durationSec > 60 * 60);
+
 		let summary: string;
-		if (options.length === 0) {
+		if (options.length === 0 || allWalkLong) {
 			summary = t("plan_summary_no_route", lang);
 		} else {
 			const fastest = options.reduce(

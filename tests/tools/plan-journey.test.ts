@@ -226,6 +226,6 @@ describe("plan_journey tool", () => {
 		});
 		const handler = createPlanJourneyTool(client);
 		const out = await handler({ from: "渋谷", to: "東京" }, "en");
-		expect(out.content[0]!.text).toMatch(/No route/);
+		expect(out.content[0]!.text).toMatch(/No transit route/);
 	});
 });

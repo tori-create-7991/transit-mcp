@@ -38,7 +38,8 @@ const ja: Dict = {
 	departures_summary: "{{name}} の今後 {{count}} 本の発車",
 	departures_empty: "{{name}} に発車情報がありません",
 	plan_summary: "{{count}} 件の経路。最速は {{route}} で {{minutes}} 分",
-	plan_summary_no_route: "経路が見つかりませんでした",
+	plan_summary_no_route:
+		"鉄道・バス経路が見つかりません。出発地と到着地のフィードが繋がっていない可能性があります（具体的な駅名や駅 ID で再検索してください）。",
 	multi_plan_summary:
 		"{{count}} 区間の連結経路：合計 {{minutes}} 分・乗換 {{transfers}} 回",
 };
@@ -65,7 +66,8 @@ const en: Dict = {
 	departures_summary: "{{count}} upcoming departures at {{name}}",
 	departures_empty: "No departures available at {{name}}",
 	plan_summary: "{{count}} routes found, fastest {{minutes}} min via {{route}}",
-	plan_summary_no_route: "No route found",
+	plan_summary_no_route:
+		"No transit route found. The feeds for the origin and destination may not be connected — try specific station names or feed-qualified IDs.",
 	multi_plan_summary:
 		"{{count}}-leg combined journey: {{minutes}} min total, {{transfers}} transfers",
 };
