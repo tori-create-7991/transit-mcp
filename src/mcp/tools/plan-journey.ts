@@ -633,17 +633,17 @@ export const createPlanJourneyTool: ToolFactory<PlanJourneyArgs> =
 		});
 
 		// Detect "no transit found" — every option is walk-only AND the
-		// trip is longer than 60 min. This usually means the Transit API's
+		// trip is longer than 3 hours. This usually means the Transit API's
 		// feed graph doesn't connect the two endpoints (cross-region with
-		// missing inter-feed transfers). Flag it in the summary so the
-		// caller doesn't act on a misleading "fastest route" answer.
+		// missing inter-feed transfers). 3 h covers realistic walk-only
+		// trips (e.g. 15 km hikes) while still catching cross-country gaps.
 		const hasAnyRail = options.some((o) =>
 			o.legs.some((l) => l.mode !== "walk"),
 		);
 		const allWalkLong =
 			options.length > 0 &&
 			!hasAnyRail &&
-			options.every((o) => o.durationSec > 60 * 60);
+			options.every((o) => o.durationSec > 3 * 60 * 60);
 
 		let summary: string;
 		if (options.length === 0 || allWalkLong) {
