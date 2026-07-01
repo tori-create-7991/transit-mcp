@@ -80,6 +80,10 @@ const SERVER_INFO = {
 // widget HTML when we ship UI diagnostics or hotfixes that they would
 // otherwise serve from their per-URI resource cache.
 const UI_WIDGET_URI = "ui://widget/plan-v3.html";
+// Legacy URIs still accepted in resources/read so ChatGPT sessions that
+// cached an older tool descriptor keep working. Only UI_WIDGET_URI is
+// advertised in resources/list.
+const UI_WIDGET_URI_LEGACY = ["ui://widget/plan.html"] as const;
 
 const TOOL_DEFS = [
 	{
@@ -224,16 +228,22 @@ export function createMcpServer(env: Env, host: string = ""): McpServer {
 	}));
 
 	server.server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
-		if (req.params.uri !== UI_WIDGET_URI) {
+		const reqUri = req.params.uri;
+		const isKnown =
+			reqUri === UI_WIDGET_URI ||
+			(UI_WIDGET_URI_LEGACY as readonly string[]).includes(reqUri);
+		if (!isKnown) {
 			throw new McpError(
 				ErrorCode.InvalidParams,
-				`Unknown resource: ${req.params.uri}`,
+				`Unknown resource: ${reqUri}`,
 			);
 		}
 		return {
 			contents: [
 				{
-					uri: UI_WIDGET_URI,
+					// Echo the requested URI so ChatGPT's per-URI cache stays
+					// consistent for both new (plan-v3) and legacy (plan.html) clients.
+					uri: reqUri,
 					mimeType: "text/html;profile=mcp-app",
 					text: PLAN_HTML_BRIDGE,
 					_meta: {
