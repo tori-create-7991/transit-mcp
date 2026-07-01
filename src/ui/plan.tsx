@@ -16,8 +16,8 @@ import { Attribution } from "./components/Attribution.js";
 import { LangToggle } from "./components/LangToggle.js";
 import { LegPicker } from "./components/LegPicker.js";
 import { MapView } from "./components/MapView.js";
-import { RouteCompareTable } from "./components/RouteCompareTable.js";
 import { RouteCard } from "./components/RouteCard.js";
+import { RouteCompareTable } from "./components/RouteCompareTable.js";
 import { detectLang, makeT, persistLang, type UiLang } from "./i18n/index.js";
 import type {
 	IframeBootstrap,
@@ -458,7 +458,7 @@ import {
 } from "@modelcontextprotocol/ext-apps/app-with-deps";
 
 const DEFAULT_MAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
-const DEFAULT_MAP_STYLE_DARK = "https://tiles.openfreemap.org/styles/dark-matter";
+const DEFAULT_MAP_STYLE_DARK = "https://tiles.openfreemap.org/styles/dark";
 let bridgeApp: McpApp | undefined;
 
 function extractPlanFromResult(result: unknown): PlanData | undefined {
