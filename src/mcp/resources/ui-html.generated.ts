@@ -29,6 +29,11 @@ body,
 #app {
   margin: 0;
   padding: 0;
+  /* Force layout height (not just overflow) so ChatGPT's auto-resize
+     picks up the real widget height. Without min-height here, body
+     collapses to 0 in the auto-resized iframe and the widget shows
+     only the first card. */
+  min-height: 560px;
   height: 100%;
   font-family:
     -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", system-ui,
@@ -44,12 +49,8 @@ body,
   grid-template-areas:
     "list map"
     "attr attr";
-  /* ChatGPT MCP Apps SDK auto-resizes the iframe to content height, which
-     makes \`100vh\` collapse to 0 (feedback loop with \`1fr\` rows). Fall back
-     to \`min-height\` so both auto-resize (inline) and fullscreen modes get
-     a real canvas for MapLibre. */
-  height: 100vh;
-  min-height: 520px;
+  min-height: 560px;
+  height: 100%;
 }
 
 .app__summary {
@@ -1586,6 +1587,11 @@ body,
 #app {
   margin: 0;
   padding: 0;
+  /* Force layout height (not just overflow) so ChatGPT's auto-resize
+     picks up the real widget height. Without min-height here, body
+     collapses to 0 in the auto-resized iframe and the widget shows
+     only the first card. */
+  min-height: 560px;
   height: 100%;
   font-family:
     -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", system-ui,
@@ -1601,12 +1607,8 @@ body,
   grid-template-areas:
     "list map"
     "attr attr";
-  /* ChatGPT MCP Apps SDK auto-resizes the iframe to content height, which
-     makes \`100vh\` collapse to 0 (feedback loop with \`1fr\` rows). Fall back
-     to \`min-height\` so both auto-resize (inline) and fullscreen modes get
-     a real canvas for MapLibre. */
-  height: 100vh;
-  min-height: 520px;
+  min-height: 560px;
+  height: 100%;
 }
 
 .app__summary {
