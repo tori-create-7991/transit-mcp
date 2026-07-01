@@ -23,6 +23,7 @@ type MapLibreMap = {
 		b: [[number, number], [number, number]],
 		opts: { padding?: number; duration?: number; maxZoom?: number },
 	) => void;
+	resize: () => void;
 	remove: () => void;
 };
 
@@ -56,6 +57,7 @@ export function MapView(props: {
 		darkMode && mapStyleUrlDark ? mapStyleUrlDark : mapStyleUrl;
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const mapRef = useRef<MapLibreMap | null>(null);
+	const roRef = useRef<ResizeObserver | null>(null);
 	const loadedRef = useRef(false);
 
 	useEffect(() => {
@@ -73,8 +75,24 @@ export function MapView(props: {
 			}) as unknown as MapLibreMap;
 			mapRef.current = m;
 			loadedRef.current = false;
+			// Auto-resize when the container size changes. ChatGPT MCP Apps
+			// SDK auto-resizes the iframe based on content; the map container
+			// may start small and grow later, so watch for it.
+			const ro =
+				typeof ResizeObserver !== "undefined"
+					? new ResizeObserver(() => {
+							try {
+								m.resize();
+							} catch {}
+						})
+					: null;
+			if (ro && containerRef.current) ro.observe(containerRef.current);
+			roRef.current = ro;
 			m.on("load", () => {
 				loadedRef.current = true;
+				try {
+					m.resize();
+				} catch {}
 				if (!map) return;
 
 				const transitFeatures = map.segments
@@ -119,7 +137,12 @@ export function MapView(props: {
 						type: "line",
 						source: "route-transit",
 						paint: {
-							"line-color": ["case", ["has", "color"], ["get", "color"], "#0a6cff"],
+							"line-color": [
+								"case",
+								["has", "color"],
+								["get", "color"],
+								"#0a6cff",
+							],
 							"line-width": 5,
 						},
 						layout: { "line-cap": "round", "line-join": "round" },
@@ -183,6 +206,9 @@ export function MapView(props: {
 		});
 		return () => {
 			cancelled = true;
+			const ro = roRef.current;
+			if (ro) ro.disconnect();
+			roRef.current = null;
 			const m = mapRef.current;
 			if (m?.remove) m.remove();
 			mapRef.current = null;

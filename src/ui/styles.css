@@ -25,7 +25,12 @@ body,
   grid-template-areas:
     "list map"
     "attr attr";
+  /* ChatGPT MCP Apps SDK auto-resizes the iframe to content height, which
+     makes `100vh` collapse to 0 (feedback loop with `1fr` rows). Fall back
+     to `min-height` so both auto-resize (inline) and fullscreen modes get
+     a real canvas for MapLibre. */
   height: 100vh;
+  min-height: 520px;
 }
 
 .app__summary {
@@ -49,6 +54,8 @@ body,
 .app__map {
   grid-area: map;
   position: relative;
+  /* Guard against 0-height iframes (see .app min-height note). */
+  min-height: 400px;
 }
 
 .map-view {
