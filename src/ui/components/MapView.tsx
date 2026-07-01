@@ -12,11 +12,14 @@
  * the full plan bounds.
  */
 
-import { type ReactElement, useEffect, useRef } from "react";
+import { type ReactElement, useEffect, useRef, useState } from "react";
 import type { PlanMapBounds, PlanMapData } from "../types.js";
 
 type MapLibreMap = {
-	on: (ev: "load", cb: () => void) => void;
+	on: (
+		ev: "load" | "error" | "styledata",
+		cb: (e?: { error?: Error }) => void,
+	) => void;
 	addSource: (id: string, src: unknown) => void;
 	addLayer: (layer: unknown) => void;
 	fitBounds: (
@@ -59,51 +62,88 @@ export function MapView(props: {
 	const mapRef = useRef<MapLibreMap | null>(null);
 	const roRef = useRef<ResizeObserver | null>(null);
 	const loadedRef = useRef(false);
+	const [initError, setInitError] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!containerRef.current) return;
 		let cancelled = false;
-		void import("maplibre-gl").then((mlib) => {
-			if (cancelled || !containerRef.current) return;
-			const Map = mlib.Map;
-			const m = new Map({
-				container: containerRef.current,
-				style: effectiveStyle,
-				center: [139.7671, 35.6812],
-				zoom: 10,
-				attributionControl: false,
-			}) as unknown as MapLibreMap;
-			mapRef.current = m;
-			loadedRef.current = false;
-			// Auto-resize when the container size changes. ChatGPT MCP Apps
-			// SDK auto-resizes the iframe based on content; the map container
-			// may start small and grow later, so watch for it.
-			const ro =
-				typeof ResizeObserver !== "undefined"
-					? new ResizeObserver(() => {
-							try {
-								m.resize();
-							} catch {}
-						})
-					: null;
-			if (ro && containerRef.current) ro.observe(containerRef.current);
-			roRef.current = ro;
-			m.on("load", () => {
-				loadedRef.current = true;
+		setInitError(null);
+		void import("maplibre-gl")
+			.catch((err: unknown) => {
+				const msg = err instanceof Error ? err.message : String(err);
+				console.error("[transit-mcp] maplibre-gl import failed:", err);
+				setInitError(`Map library failed to load: ${msg}`);
+				return null;
+			})
+			.then((mlib) => {
+				if (!mlib || cancelled || !containerRef.current) return;
+				let m: MapLibreMap;
 				try {
-					m.resize();
-				} catch {}
-				if (!map) return;
+					m = new mlib.Map({
+						container: containerRef.current,
+						style: effectiveStyle,
+						center: [139.7671, 35.6812],
+						zoom: 10,
+						attributionControl: false,
+					}) as unknown as MapLibreMap;
+				} catch (err) {
+					const msg = err instanceof Error ? err.message : String(err);
+					console.error("[transit-mcp] MapLibre init threw:", err);
+					setInitError(`Map init failed: ${msg}`);
+					return;
+				}
+				m.on("error", (e) => {
+					console.error("[transit-mcp] MapLibre runtime error:", e?.error ?? e);
+					if (!loadedRef.current) {
+						setInitError(
+							`Map runtime error: ${e?.error?.message ?? "unknown"}`,
+						);
+					}
+				});
+				mapRef.current = m;
+				loadedRef.current = false;
+				// Auto-resize when the container size changes. ChatGPT MCP Apps
+				// SDK auto-resizes the iframe based on content; the map container
+				// may start small and grow later, so watch for it.
+				const ro =
+					typeof ResizeObserver !== "undefined"
+						? new ResizeObserver(() => {
+								try {
+									m.resize();
+								} catch {}
+							})
+						: null;
+				if (ro && containerRef.current) ro.observe(containerRef.current);
+				roRef.current = ro;
+				m.on("load", () => {
+					loadedRef.current = true;
+					try {
+						m.resize();
+					} catch {}
+					if (!map) return;
 
-				const transitFeatures = map.segments
-					.filter((s) => s.kind !== "walk" && s.polyline.length >= 2)
-					.map((s) => {
-						const color = s.color
-							? s.color.startsWith("#")
-								? s.color
-								: `#${s.color}`
-							: null;
-						return {
+					const transitFeatures = map.segments
+						.filter((s) => s.kind !== "walk" && s.polyline.length >= 2)
+						.map((s) => {
+							const color = s.color
+								? s.color.startsWith("#")
+									? s.color
+									: `#${s.color}`
+								: null;
+							return {
+								type: "Feature" as const,
+								geometry: {
+									type: "LineString" as const,
+									coordinates: s.polyline.map(
+										(p) => [p.lon, p.lat] as [number, number],
+									),
+								},
+								properties: color ? { kind: s.kind, color } : { kind: s.kind },
+							};
+						});
+					const walkFeatures = map.segments
+						.filter((s) => s.kind === "walk" && s.polyline.length >= 2)
+						.map((s) => ({
 							type: "Feature" as const,
 							geometry: {
 								type: "LineString" as const,
@@ -111,99 +151,86 @@ export function MapView(props: {
 									(p) => [p.lon, p.lat] as [number, number],
 								),
 							},
-							properties: color ? { kind: s.kind, color } : { kind: s.kind },
-						};
-					});
-				const walkFeatures = map.segments
-					.filter((s) => s.kind === "walk" && s.polyline.length >= 2)
-					.map((s) => ({
-						type: "Feature" as const,
-						geometry: {
-							type: "LineString" as const,
-							coordinates: s.polyline.map(
-								(p) => [p.lon, p.lat] as [number, number],
-							),
-						},
-						properties: { kind: s.kind },
-					}));
+							properties: { kind: s.kind },
+						}));
 
-				if (transitFeatures.length > 0) {
-					m.addSource("route-transit", {
-						type: "geojson",
-						data: { type: "FeatureCollection", features: transitFeatures },
-					});
-					m.addLayer({
-						id: "route-transit-line",
-						type: "line",
-						source: "route-transit",
-						paint: {
-							"line-color": [
-								"case",
-								["has", "color"],
-								["get", "color"],
-								"#0a6cff",
+					if (transitFeatures.length > 0) {
+						m.addSource("route-transit", {
+							type: "geojson",
+							data: { type: "FeatureCollection", features: transitFeatures },
+						});
+						m.addLayer({
+							id: "route-transit-line",
+							type: "line",
+							source: "route-transit",
+							paint: {
+								"line-color": [
+									"case",
+									["has", "color"],
+									["get", "color"],
+									"#0a6cff",
+								],
+								"line-width": 5,
+							},
+							layout: { "line-cap": "round", "line-join": "round" },
+						});
+					}
+					if (walkFeatures.length > 0) {
+						m.addSource("route-walk", {
+							type: "geojson",
+							data: { type: "FeatureCollection", features: walkFeatures },
+						});
+						m.addLayer({
+							id: "route-walk-line",
+							type: "line",
+							source: "route-walk",
+							paint: {
+								"line-color": "#888",
+								"line-width": 3,
+								"line-dasharray": [1, 1.5],
+							},
+							layout: { "line-cap": "round", "line-join": "round" },
+						});
+					}
+
+					const Marker = mlib.Marker;
+					for (const p of map.points) {
+						const role = p.role ?? "stop";
+						const color =
+							role === "origin"
+								? "#16a34a"
+								: role === "destination"
+									? "#dc2626"
+									: (operatorColor(p.operatorId) ?? "#555");
+						const marker = new Marker({ color })
+							.setLngLat([p.lon, p.lat])
+							.addTo(m as never);
+						const title = [p.name, p.operatorId].filter(Boolean).join(" / ");
+						if (title) marker.getElement().setAttribute("title", title);
+					}
+
+					const initial = focusBounds ?? map.bounds;
+					if (initial) {
+						m.fitBounds(
+							[
+								[initial.minLon, initial.minLat],
+								[initial.maxLon, initial.maxLat],
 							],
-							"line-width": 5,
-						},
-						layout: { "line-cap": "round", "line-join": "round" },
-					});
-				}
-				if (walkFeatures.length > 0) {
-					m.addSource("route-walk", {
-						type: "geojson",
-						data: { type: "FeatureCollection", features: walkFeatures },
-					});
-					m.addLayer({
-						id: "route-walk-line",
-						type: "line",
-						source: "route-walk",
-						paint: {
-							"line-color": "#888",
-							"line-width": 3,
-							"line-dasharray": [1, 1.5],
-						},
-						layout: { "line-cap": "round", "line-join": "round" },
-					});
-				}
-
-				const Marker = mlib.Marker;
-				for (const p of map.points) {
-					const role = p.role ?? "stop";
-					const color =
-						role === "origin"
-							? "#16a34a"
-							: role === "destination"
-								? "#dc2626"
-								: (operatorColor(p.operatorId) ?? "#555");
-					const marker = new Marker({ color })
-						.setLngLat([p.lon, p.lat])
-						.addTo(m as never);
-					const title = [p.name, p.operatorId].filter(Boolean).join(" / ");
-					if (title) marker.getElement().setAttribute("title", title);
-				}
-
-				const initial = focusBounds ?? map.bounds;
-				if (initial) {
-					m.fitBounds(
-						[
-							[initial.minLon, initial.minLat],
-							[initial.maxLon, initial.maxLat],
-						],
-						{ padding: 40, duration: 0 },
-					);
-				} else if (map.points.length > 0) {
-					const lats = map.points.map((p) => p.lat);
-					const lons = map.points.map((p) => p.lon);
-					m.fitBounds(
-						[
-							[Math.min(...lons), Math.min(...lats)],
-							[Math.max(...lons), Math.max(...lats)],
-						],
-						{ padding: 40, duration: 0 },
-					);
-				}
+							{ padding: 40, duration: 0 },
+						);
+					} else if (map.points.length > 0) {
+						const lats = map.points.map((p) => p.lat);
+						const lons = map.points.map((p) => p.lon);
+						m.fitBounds(
+							[
+								[Math.min(...lons), Math.min(...lats)],
+								[Math.max(...lons), Math.max(...lats)],
+							],
+							{ padding: 40, duration: 0 },
+						);
+					}
+				});
 			});
-		});
 		return () => {
 			cancelled = true;
 			const ro = roRef.current;
@@ -235,5 +262,26 @@ export function MapView(props: {
 		);
 	}, [focusBounds, map?.bounds]);
 
-	return <div className="map-view" ref={containerRef} />;
+	return (
+		<div className="map-view" ref={containerRef}>
+			{initError ? (
+				<div
+					style={{
+						position: "absolute",
+						inset: 0,
+						padding: 12,
+						color: "#fff",
+						background: "#7a1e1e",
+						font: "12px/1.4 monospace",
+						overflow: "auto",
+						zIndex: 5,
+					}}
+				>
+					<strong>Map error</strong>
+					<br />
+					{initError}
+				</div>
+			) : null}
+		</div>
+	);
 }
