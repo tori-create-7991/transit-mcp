@@ -79,11 +79,14 @@ const SERVER_INFO = {
 // Bump the "vNN" suffix to force ChatGPT / other MCP hosts to refetch the
 // widget HTML when we ship UI diagnostics or hotfixes that they would
 // otherwise serve from their per-URI resource cache.
-const UI_WIDGET_URI = "ui://widget/plan-v3.html";
+const UI_WIDGET_URI = "ui://widget/plan-v4.html";
 // Legacy URIs still accepted in resources/read so ChatGPT sessions that
 // cached an older tool descriptor keep working. Only UI_WIDGET_URI is
 // advertised in resources/list.
-const UI_WIDGET_URI_LEGACY = ["ui://widget/plan.html"] as const;
+const UI_WIDGET_URI_LEGACY = [
+	"ui://widget/plan.html",
+	"ui://widget/plan-v3.html",
+] as const;
 
 const TOOL_DEFS = [
 	{
