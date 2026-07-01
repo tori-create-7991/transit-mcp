@@ -63,11 +63,13 @@ export function MapView(props: {
 	const roRef = useRef<ResizeObserver | null>(null);
 	const loadedRef = useRef(false);
 	const [initError, setInitError] = useState<string | null>(null);
+	const [status, setStatus] = useState<string>("boot");
 
 	useEffect(() => {
 		if (!containerRef.current) return;
 		let cancelled = false;
 		setInitError(null);
+		setStatus("importing maplibre-gl");
 		void import("maplibre-gl")
 			.catch((err: unknown) => {
 				const msg = err instanceof Error ? err.message : String(err);
@@ -77,6 +79,11 @@ export function MapView(props: {
 			})
 			.then((mlib) => {
 				if (!mlib || cancelled || !containerRef.current) return;
+				setStatus("constructing map");
+				const rect = containerRef.current.getBoundingClientRect();
+				console.info(
+					`[transit-mcp] map container ${rect.width}x${rect.height}`,
+				);
 				let m: MapLibreMap;
 				try {
 					m = new mlib.Map({
@@ -89,15 +96,19 @@ export function MapView(props: {
 				} catch (err) {
 					const msg = err instanceof Error ? err.message : String(err);
 					console.error("[transit-mcp] MapLibre init threw:", err);
-					setInitError(`Map init failed: ${msg}`);
+					setInitError(
+						`Map init failed (${rect.width}x${rect.height}): ${msg}`,
+					);
 					return;
 				}
+				setStatus("awaiting style + tiles");
 				m.on("error", (e) => {
 					console.error("[transit-mcp] MapLibre runtime error:", e?.error ?? e);
+					const msg = e?.error?.message ?? "unknown";
 					if (!loadedRef.current) {
-						setInitError(
-							`Map runtime error: ${e?.error?.message ?? "unknown"}`,
-						);
+						setInitError(`Map runtime error: ${msg}`);
+					} else {
+						setStatus(`runtime err: ${msg}`);
 					}
 				});
 				mapRef.current = m;
@@ -117,6 +128,7 @@ export function MapView(props: {
 				roRef.current = ro;
 				m.on("load", () => {
 					loadedRef.current = true;
+					setStatus("loaded");
 					try {
 						m.resize();
 					} catch {}
@@ -281,7 +293,24 @@ export function MapView(props: {
 					<br />
 					{initError}
 				</div>
-			) : null}
+			) : (
+				<div
+					style={{
+						position: "absolute",
+						top: 8,
+						left: 8,
+						padding: "4px 8px",
+						color: "#fff",
+						background: "rgba(0,0,0,0.55)",
+						font: "11px/1.2 monospace",
+						borderRadius: 4,
+						zIndex: 5,
+						pointerEvents: "none",
+					}}
+				>
+					map: {status}
+				</div>
+			)}
 		</div>
 	);
 }

@@ -76,7 +76,10 @@ const SERVER_INFO = {
 // MCP Apps SDK resource URI for the iframe widget. Registered via
 // resources/list + read so OpenAI Apps SDK (ChatGPT) can fetch the HTML
 // referenced from each plan tool's `_meta["openai/outputTemplate"]`.
-const UI_WIDGET_URI = "ui://widget/plan.html";
+// Bump the "vNN" suffix to force ChatGPT / other MCP hosts to refetch the
+// widget HTML when we ship UI diagnostics or hotfixes that they would
+// otherwise serve from their per-URI resource cache.
+const UI_WIDGET_URI = "ui://widget/plan-v3.html";
 
 const TOOL_DEFS = [
 	{
