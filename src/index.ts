@@ -35,9 +35,17 @@ app.get("/health", (c) => {
 // Stateless mode cannot keep a standalone SSE stream open: the transport is
 // closed as soon as the request ends, so clients reconnect in a tight loop.
 // The MCP Streamable HTTP spec allows 405 here; clients then stop retrying.
+// Must stay registered before `app.all("/mcp")` (tests/mcp-route.test.ts).
 app.get("/mcp", (c) => {
-	c.header("Allow", "POST");
-	return c.text("Method Not Allowed", 405);
+	c.header("Allow", "POST, DELETE");
+	return c.json(
+		{
+			jsonrpc: "2.0",
+			error: { code: -32000, message: "Method not allowed." },
+			id: null,
+		},
+		405,
+	);
 });
 
 app.all("/mcp", async (c) => {

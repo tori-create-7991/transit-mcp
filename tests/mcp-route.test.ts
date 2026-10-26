@@ -26,7 +26,19 @@ describe("/mcp route", () => {
 		);
 
 		expect(res.status).toBe(405);
-		expect(res.headers.get("allow")).toBe("POST");
+		expect(res.headers.get("allow")).toBe("POST, DELETE");
+		const body = (await res.json()) as { error: { code: number } };
+		expect(body.error.code).toBe(-32000);
+	});
+
+	it("keeps DELETE handled by the transport", async () => {
+		const res = await app.request(
+			`${BASE}/mcp`,
+			{ method: "DELETE", headers: { "mcp-protocol-version": "2025-06-18" } },
+			makeEnv(),
+		);
+
+		expect(res.status).toBe(200);
 	});
 
 	it("still answers POST initialize with 200", async () => {
