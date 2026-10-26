@@ -1,10 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { makeT } from "../src/ui/i18n/index.js";
 import {
 	RouteCard,
 	secondsUntilDeparture,
 } from "../src/ui/components/RouteCard.js";
+import { makeT } from "../src/ui/i18n/index.js";
 import type { PlanOptionUi } from "../src/ui/types.js";
 
 function optionWithLeg(mode: string, departSec: number): PlanOptionUi {
@@ -25,9 +25,9 @@ function optionWithLeg(mode: string, departSec: number): PlanOptionUi {
 
 describe("secondsUntilDeparture", () => {
 	it("returns remaining seconds when departure is within one hour", () => {
-		expect(secondsUntilDeparture(13 * 3600 + 45 * 60, 13 * 3600 + 42 * 60)).toBe(
-			180,
-		);
+		expect(
+			secondsUntilDeparture(13 * 3600 + 45 * 60, 13 * 3600 + 42 * 60),
+		).toBe(180);
 	});
 
 	it("returns null for past departures older than the fetch grace window", () => {
@@ -39,7 +39,10 @@ describe("RouteCard", () => {
 	it("renders a live delay banner when delay is at least one minute", () => {
 		const html = renderToStaticMarkup(
 			<RouteCard
-				option={{ ...optionWithLeg("rail", 13 * 3600), live: { delaySec: 300 } }}
+				option={{
+					...optionWithLeg("rail", 13 * 3600),
+					live: { delaySec: 300 },
+				}}
 				rank={1}
 				t={makeT("ja")}
 			/>,
@@ -51,7 +54,11 @@ describe("RouteCard", () => {
 
 	it("does not render a live banner when live data is missing", () => {
 		const html = renderToStaticMarkup(
-			<RouteCard option={optionWithLeg("rail", 13 * 3600)} rank={1} t={makeT("ja")} />,
+			<RouteCard
+				option={optionWithLeg("rail", 13 * 3600)}
+				rank={1}
+				t={makeT("ja")}
+			/>,
 		);
 
 		expect(html).not.toContain("route-card__live-banner");
