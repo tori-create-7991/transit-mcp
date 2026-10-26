@@ -11,7 +11,9 @@ describe("renderUiHtml", () => {
 			"en",
 		);
 
-		expect(html).toContain('"mapStyleUrl":"https://tiles.example.test/light.json"');
+		expect(html).toContain(
+			'"mapStyleUrl":"https://tiles.example.test/light.json"',
+		);
 		expect(html).toContain(
 			'"mapStyleUrlDark":"https://tiles.example.test/dark.json"',
 		);

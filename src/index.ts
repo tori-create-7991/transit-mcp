@@ -3,8 +3,9 @@
  *
  * Routes:
  * - GET  /health  → liveness probe
- * - ALL  /mcp     → MCP Streamable HTTP transport (POST for JSON-RPC, GET
- *                   for SSE streaming, DELETE for session termination)
+ * - GET  /mcp     → 405 (no standalone SSE stream in stateless mode)
+ * - ALL  /mcp     → MCP Streamable HTTP transport (POST for JSON-RPC,
+ *                   DELETE for session termination)
  * - GET  /ui/plan → iframe UI for `plan_journey` (Phase 4)
  *
  * The MCP server is created per-request in stateless mode. Each request
@@ -29,6 +30,22 @@ const app = new Hono<HonoEnv>();
 
 app.get("/health", (c) => {
 	return c.json({ status: "ok", service: "transit-mcp" });
+});
+
+// Stateless mode cannot keep a standalone SSE stream open: the transport is
+// closed as soon as the request ends, so clients reconnect in a tight loop.
+// The MCP Streamable HTTP spec allows 405 here; clients then stop retrying.
+// Must stay registered before `app.all("/mcp")` (tests/mcp-route.test.ts).
+app.get("/mcp", (c) => {
+	c.header("Allow", "POST, DELETE");
+	return c.json(
+		{
+			jsonrpc: "2.0",
+			error: { code: -32000, message: "Method not allowed." },
+			id: null,
+		},
+		405,
+	);
 });
 
 app.all("/mcp", async (c) => {
